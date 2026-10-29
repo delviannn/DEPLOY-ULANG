@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+/*
+  Token desain kustom Toko Delviann (Bespoke Artisan Craft & Culinary).
+  Sesuai panduan di DESIGN.md.
+*/
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+  --color-latar: #ffffff;
+  --color-permukaan: #f8fafc;
+  --color-garis: #e2e8f0;
+  --color-teks: #0f172a;
+  --color-teks-lembut: #64748b;
+
+  /* Warna Utama: Deep Artisan Teal yang elegan dan khas UMKM modern */
+  --color-utama: #0f766e;
+  --color-utama-gelap: #115e59;
+
+  /* Aksen Harga: Terracotta Warm Amber */
+  --color-harga: #9a3412;
+  --color-harga-latar: #ffedd5;
+
+  --color-bahaya: #dc2626;
+}
+
+html {
+  color: var(--color-teks);
+  background: var(--color-latar);
+  scroll-behavior: smooth;
+}
+
+html.dark {
+  color-scheme: dark;
+  --color-latar: #111a17;
+  --color-permukaan: #1b2923;
+  --color-garis: #34473d;
+  --color-teks: #edf5f0;
+  --color-teks-lembut: #b3c3ba;
+  --color-utama: #5bc49b;
+  --color-utama-gelap: #39a77d;
+  --color-harga: #ffd39a;
+  --color-harga-latar: #50351c;
+  --color-bahaya: #ff938c;
+}
+
+.hero-katalog {
+  background:
+    radial-gradient(ellipse at 90% 12%, color-mix(in srgb, var(--color-utama) 9%, transparent), transparent 36%),
+    linear-gradient(140deg, var(--color-latar) 12%, var(--color-permukaan) 100%);
+}
+
+::selection {
+  color: var(--color-latar);
+  background: var(--color-utama);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-utama);
+  outline-offset: 2px;
+}
