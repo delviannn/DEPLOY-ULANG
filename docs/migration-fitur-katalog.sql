@@ -63,7 +63,7 @@ create table if not exists public.rate_limit_bucket (
 );
 alter table public.rate_limit_bucket enable row level security;
 
-create or replace function public.rate_limit_consume(bucket_key text, request_limit integer, window_seconds integer)
+create or replace function public.rate_limit_consume(p_bucket_key text, p_request_limit integer, p_window_seconds integer)
 returns boolean
 language plpgsql
 security definer
@@ -71,23 +71,23 @@ set search_path = ''
 as $$
 declare current_hits integer;
 begin
-  if request_limit < 1 or window_seconds < 1 or window_seconds > 86400
-    or bucket_key !~ '^[0-9a-f]{64}$' then
+  if p_request_limit < 1 or p_window_seconds < 1 or p_window_seconds > 86400
+    or p_bucket_key !~ '^[0-9a-f]{64}$' then
     return false;
   end if;
   insert into public.rate_limit_bucket (bucket_key, window_started_at, hits)
-  values (bucket_key, now(), 1)
+  values (p_bucket_key, now(), 1)
   on conflict (bucket_key) do update set
-    hits = case when public.rate_limit_bucket.window_started_at < now() - make_interval(secs => window_seconds)
+    hits = case when public.rate_limit_bucket.window_started_at < now() - make_interval(secs => p_window_seconds)
       then 1 else public.rate_limit_bucket.hits + 1 end,
-    window_started_at = case when public.rate_limit_bucket.window_started_at < now() - make_interval(secs => window_seconds)
+    window_started_at = case when public.rate_limit_bucket.window_started_at < now() - make_interval(secs => p_window_seconds)
       then now() else public.rate_limit_bucket.window_started_at end
   returning hits into current_hits;
   if random() < 0.01 then
     delete from public.rate_limit_bucket
     where window_started_at < now() - interval '1 day';
   end if;
-  return current_hits <= request_limit;
+  return current_hits <= p_request_limit;
 end;
 $$;
 revoke all on function public.rate_limit_consume(text, integer, integer) from public, anon, authenticated;
