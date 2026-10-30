@@ -516,7 +516,6 @@ Tulis dengan format:
 - Manfaat bagi pengguna
 - Call to action`;
 
-  // 1. Integrasi OpenAI API jika OPENAI_API_KEY tersedia
   const openaiKey = process.env.OPENAI_API_KEY;
   if (openaiKey) {
     try {
@@ -542,42 +541,45 @@ Tulis dengan format:
         }),
       });
 
-      const data = res.ok ? await res.json() : null;
-      if (typeof data?.choices?.[0]?.message?.content === "string") {
-        return { hasil: data.choices[0].message.content.trim().slice(0, 3000) };
+      const data = await res.json().catch(() => null);
+      if (!res.ok) console.error("[deskripsi-ai] OpenAI menolak permintaan", { status: res.status, code: data?.error?.code || null, type: data?.error?.type || null });
+      const hasil = data?.choices?.[0]?.message?.content;
+      if (typeof hasil === "string" && hasil.trim()) {
+        return { hasil: hasil.trim().slice(0, 3000) };
       }
-    } catch {
-      // Hindari mencatat detail permintaan dari provider pihak ketiga.
-    }
+      if (res.ok) console.error("[deskripsi-ai] OpenAI tidak mengembalikan teks");
+    } catch (error) { console.error("[deskripsi-ai] Koneksi OpenAI gagal", { name: error?.name || "Error" }); }
   }
 
-  // 2. Integrasi Gemini API jika GEMINI_API_KEY tersedia
   const geminiKey = process.env.GEMINI_API_KEY;
   if (geminiKey) {
-    try {
-      const res = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
-        {
+    for (const model of ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]) {
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 700 },
+            generationConfig: { maxOutputTokens: 700, thinkingConfig: { thinkingLevel: "minimal" } },
           }),
-          signal: AbortSignal.timeout(15000),
+          signal: AbortSignal.timeout(10000),
           redirect: "error",
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+          console.error("[deskripsi-ai] Gemini menolak permintaan", { model, status: res.status, code: data?.error?.status || null });
+          if (res.status === 429 || res.status >= 500) continue;
+          break;
         }
-      );
-
-      const data = res.ok ? await res.json() : null;
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (typeof text === "string" && text.trim()) {
-        return { hasil: text.trim().slice(0, 3000) };
+        const hasil = data?.candidates?.[0]?.content?.parts?.find((part) => part.text && part.thought !== true)?.text;
+        if (typeof hasil === "string" && hasil.trim()) return { hasil: hasil.trim().slice(0, 3000) };
+        console.error("[deskripsi-ai] Gemini tidak mengembalikan teks", { model, finishReason: data?.candidates?.[0]?.finishReason || null, promptFeedback: data?.promptFeedback?.blockReason || null });
+      } catch (error) {
+        console.error("[deskripsi-ai] Koneksi Gemini gagal", { model, name: error?.name || "Error" });
       }
-    } catch {
-      // Hindari mencatat detail permintaan dari provider pihak ketiga.
     }
   }
 
-  return { error: "Layanan AI belum tersedia. Atur OPENAI_API_KEY atau GEMINI_API_KEY di environment server." };
+  if (!openaiKey && !geminiKey) return { error: "Layanan AI belum dikonfigurasi. Atur OPENAI_API_KEY atau GEMINI_API_KEY di environment server." };
+  return { error: "Layanan AI sedang sibuk atau kunci API tidak dapat digunakan. Coba lagi, atau periksa kuota dan akses Gemini API di Vercel." };
 }
