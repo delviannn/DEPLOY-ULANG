@@ -47,6 +47,8 @@ export default function KoleksiBrowser({ jenis, ringkas = false }) {
     setProduk((old) => old.filter((item) => String(item.id) !== String(id)));
   }
 
+  if (ringkas && (!siap || ids.length === 0)) return null;
+
   return <section aria-labelledby={`judul-koleksi-${jenis}`} className={ringkas ? "py-6" : "py-8"}>
     {ringkas ? <h2 id={`judul-koleksi-${jenis}`} className="text-xl font-extrabold text-teks">{JUDUL[jenis]}</h2> : <h1 id={`judul-koleksi-${jenis}`} className="text-2xl font-extrabold text-teks">{JUDUL[jenis]}</h1>}
     {error ? <p role="alert" className="mt-5 rounded-xl border border-red-300 bg-red-50 p-4 text-red-700">{error}</p>

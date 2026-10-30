@@ -44,7 +44,7 @@ export default async function HalamanDetailProduk({ params }) {
     supabase.from("ulasan").select("id,nama,rating,isi,created_at").eq("produk_id", produk.id).eq("status", "disetujui").order("created_at", { ascending: false }).limit(50),
     produk.kategori ? supabase.from("kategori").select("slug").eq("nama", produk.kategori).maybeSingle() : Promise.resolve({ data: null }),
   ]);
-  if (!errorVarian && varianTabel) produk.varian = varianTabel;
+  if (!errorVarian && varianTabel?.length) produk.varian = varianTabel;
   const kategoriSlug = kategoriData?.slug || (produk.kategori ? slugKategori(produk.kategori) : "");
   const toko = await ambilPengaturanToko();
 

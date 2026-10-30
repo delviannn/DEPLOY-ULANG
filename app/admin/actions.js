@@ -87,6 +87,20 @@ function bacaDataProduk(formData) {
   return { data: { nama, harga, stok, urutan, harga_coret, foto_url, foto_lainnya, kategori: kategori?.slice(0, 60) || null, deskripsi: deskripsi?.slice(0, 3000) || null, aktif: formData.get("aktif") === "true", varian } };
 }
 
+async function simpanVarianRelasional(supabase, produkId, varian, hargaDasar) {
+  const { error: errorHapus } = await supabase.from("varian_produk").delete().eq("produk_id", produkId);
+  if (errorHapus) return "Varian gagal disimpan ke tabel varian produk.";
+  if (!varian?.length) return null;
+  const rows = varian.map((item, urutan) => ({
+    produk_id: produkId,
+    nama: item.nama.trim(),
+    harga: item.harga ?? hargaDasar,
+    urutan,
+  }));
+  const { error } = await supabase.from("varian_produk").insert(rows);
+  return error ? "Varian gagal disimpan ke tabel varian produk." : null;
+}
+
 function parseCSV(text) {
   const rows = [];
   let row = [], field = "", quoted = false;
@@ -376,14 +390,16 @@ export async function tambahProduk(_prevState, formData) {
   const foto = await unggahFoto(formData, supabase, parsed.data.foto_url);
   if (foto.error) return { error: foto.error };
 
-  const { error } = await supabase.from("produk").insert({
+  const { data: produkBaru, error } = await supabase.from("produk").insert({
     ...parsed.data,
     foto_url: foto.foto_url,
-  });
+  }).select("id").single();
 
   if (error) {
     return { error: "Gagal menyimpan produk. Periksa data dan coba lagi." };
   }
+  const errorVarian = await simpanVarianRelasional(supabase, produkBaru.id, parsed.data.varian, parsed.data.harga);
+  if (errorVarian) return { error: errorVarian };
   await catatAksiAdmin(supabase, "tambah", "produk");
 
   revalidatePath("/admin");
@@ -424,6 +440,8 @@ export async function ubahProduk(_prevState, formData) {
   if (error) {
     return { error: "Gagal memperbarui produk. Periksa data dan coba lagi." };
   }
+  const errorVarian = await simpanVarianRelasional(supabase, id, parsed.data.varian, parsed.data.harga);
+  if (errorVarian) return { error: errorVarian };
   await catatAksiAdmin(supabase, "ubah", "produk", id);
 
   revalidatePath("/admin");
