@@ -89,20 +89,6 @@ function bacaDataProduk(formData) {
   return { data: { nama, harga, stok, urutan, harga_coret, foto_url, foto_lainnya, kategori: kategori?.slice(0, 60) || null, deskripsi: deskripsi?.slice(0, 3000) || null, aktif: formData.get("aktif") === "true", varian } };
 }
 
-async function simpanVarianRelasional(supabase, produkId, varian, hargaDasar) {
-  const { error: errorHapus } = await supabase.from("varian_produk").delete().eq("produk_id", produkId);
-  if (errorHapus) return "Varian gagal disimpan ke tabel varian produk.";
-  if (!varian?.length) return null;
-  const rows = varian.map((item, urutan) => ({
-    produk_id: produkId,
-    nama: item.nama.trim(),
-    harga: item.harga ?? hargaDasar,
-    urutan,
-  }));
-  const { error } = await supabase.from("varian_produk").insert(rows);
-  return error ? "Varian gagal disimpan ke tabel varian produk." : null;
-}
-
 function parseCSV(text) {
   const rows = [];
   let row = [], field = "", quoted = false;
@@ -400,8 +386,7 @@ export async function tambahProduk(_prevState, formData) {
   if (error) {
     return { error: "Gagal menyimpan produk. Periksa data dan coba lagi." };
   }
-  const errorVarian = await simpanVarianRelasional(supabase, produkBaru.id, parsed.data.varian, parsed.data.harga);
-  if (errorVarian) return { error: errorVarian };
+  // Trigger produk_sinkronkan_varian menyimpan varian_produk dari kolom produk.varian.
   await catatAksiAdmin(supabase, "tambah", "produk");
 
   revalidatePath("/admin");
@@ -443,8 +428,7 @@ export async function ubahProduk(_prevState, formData) {
     console.error("[admin-produk] Update gagal", { code: error.code || null, message: (error.message || "").slice(0, 300), hint: error.hint || null });
     return { error: error.code ? `Gagal memperbarui produk (kode ${error.code}). Periksa kembali data produk.` : "Gagal memperbarui produk. Periksa data dan coba lagi." };
   }
-  const errorVarian = await simpanVarianRelasional(supabase, id, parsed.data.varian, parsed.data.harga);
-  if (errorVarian) return { error: errorVarian };
+  // Trigger produk_sinkronkan_varian_update menyimpan varian_produk dari kolom produk.varian.
   await catatAksiAdmin(supabase, "ubah", "produk", id);
 
   revalidatePath("/admin");
