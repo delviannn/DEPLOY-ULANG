@@ -22,19 +22,23 @@ export async function tanyaAsistenProduk(_state, formData) {
   if (openaiKey) {
     try {
       const response = await fetch("https://api.openai.com/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${openaiKey}` }, body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "system", content: "Kamu asisten informasi katalog produk toko. Jawab hanya berdasarkan konteks yang disediakan." }, { role: "user", content: prompt }], max_tokens: 350 }), signal: AbortSignal.timeout(12000), redirect: "error" });
-      const data = response.ok ? await response.json() : null;
+      const data = await response.json().catch(() => null);
+      if (!response.ok) console.error("[asisten] OpenAI menolak permintaan", { status: response.status, code: data?.error?.code || null, type: data?.error?.type || null });
       const answer = data?.choices?.[0]?.message?.content;
       if (typeof answer === "string" && answer.trim()) return { jawaban: answer.trim().slice(0, 2000) };
-    } catch { /* Coba penyedia berikutnya tanpa mengirim detail error ke pengunjung. */ }
+      if (response.ok) console.error("[asisten] OpenAI tidak mengembalikan teks jawaban");
+    } catch (error) { console.error("[asisten] Koneksi OpenAI gagal", { name: error?.name || "Error" }); }
   }
   const geminiKey = process.env.GEMINI_API_KEY;
   if (geminiKey) {
     try {
       const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent", { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 350 } }), signal: AbortSignal.timeout(12000), redirect: "error" });
-      const data = response.ok ? await response.json() : null;
+      const data = await response.json().catch(() => null);
+      if (!response.ok) console.error("[asisten] Gemini menolak permintaan", { status: response.status, code: data?.error?.status || null, message: String(data?.error?.message || "").slice(0, 240) });
       const answer = data?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (typeof answer === "string" && answer.trim()) return { jawaban: answer.trim().slice(0, 2000) };
-    } catch { /* Tampilkan pesan konfigurasi generik di bawah. */ }
+      if (response.ok) console.error("[asisten] Gemini tidak mengembalikan teks jawaban", { finishReason: data?.candidates?.[0]?.finishReason || null, promptFeedback: data?.promptFeedback?.blockReason || null });
+    } catch (error) { console.error("[asisten] Koneksi Gemini gagal", { name: error?.name || "Error" }); }
   }
   return { error: "Asisten belum tersedia saat ini. Silakan hubungi toko melalui WhatsApp." };
 }
