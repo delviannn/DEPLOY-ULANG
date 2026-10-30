@@ -440,7 +440,8 @@ export async function ubahProduk(_prevState, formData) {
     .eq("id", id);
 
   if (error) {
-    return { error: "Gagal memperbarui produk. Periksa data dan coba lagi." };
+    console.error("[admin-produk] Update gagal", { code: error.code || null, message: (error.message || "").slice(0, 300), hint: error.hint || null });
+    return { error: error.code ? `Gagal memperbarui produk (kode ${error.code}). Periksa kembali data produk.` : "Gagal memperbarui produk. Periksa data dan coba lagi." };
   }
   const errorVarian = await simpanVarianRelasional(supabase, id, parsed.data.varian, parsed.data.harga);
   if (errorVarian) return { error: errorVarian };
