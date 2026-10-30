@@ -75,13 +75,13 @@ begin
     or $1 !~ '^[0-9a-f]{64}$' then
     return false;
   end if;
-  insert into public.rate_limit_bucket (bucket_key, window_started_at, hits)
+  insert into public.rate_limit_bucket as bucket (bucket_key, window_started_at, hits)
   values ($1, now(), 1)
-  on conflict (bucket_key) do update set
-    hits = case when public.rate_limit_bucket.window_started_at < now() - make_interval(secs => $3)
-      then 1 else public.rate_limit_bucket.hits + 1 end,
-    window_started_at = case when public.rate_limit_bucket.window_started_at < now() - make_interval(secs => $3)
-      then now() else public.rate_limit_bucket.window_started_at end
+  on conflict on constraint rate_limit_bucket_pkey do update set
+    hits = case when bucket.window_started_at < now() - make_interval(secs => $3)
+      then 1 else bucket.hits + 1 end,
+    window_started_at = case when bucket.window_started_at < now() - make_interval(secs => $3)
+      then now() else bucket.window_started_at end
   returning hits into current_hits;
   if random() < 0.01 then
     delete from public.rate_limit_bucket
