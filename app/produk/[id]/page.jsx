@@ -39,11 +39,17 @@ export default async function HalamanDetailProduk({ params }) {
   if (error || !produk) {
     notFound();
   }
-  const [{ data: varianTabel, error: errorVarian }, { data: ulasan }, { data: kategoriData }] = await Promise.all([
+  const [{ data: varianTabel, error: errorVarian }, { data: ulasanDisetujui }, { data: kategoriData }] = await Promise.all([
     supabase.from("varian_produk").select("id,nama,harga,urutan").eq("produk_id", produk.id).order("urutan", { ascending: true }),
     supabase.from("ulasan").select("id,nama,rating,isi,created_at").eq("produk_id", produk.id).eq("status", "disetujui").order("created_at", { ascending: false }).limit(50),
     produk.kategori ? supabase.from("kategori").select("slug").eq("nama", produk.kategori).maybeSingle() : Promise.resolve({ data: null }),
   ]);
+  // Hanya ulasan berstatus disetujui yang ditampilkan dan dihitung rating rata-ratanya.
+  const daftarUlasanPublik = ulasanDisetujui || [];
+  const jumlahUlasanDisetujui = daftarUlasanPublik.length;
+  const rataRataRating = jumlahUlasanDisetujui
+    ? daftarUlasanPublik.reduce((total, ulasanItem) => total + ulasanItem.rating, 0) / jumlahUlasanDisetujui
+    : null;
   if (!errorVarian && varianTabel?.length) produk.varian = varianTabel;
   const kategoriSlug = kategoriData?.slug || (produk.kategori ? slugKategori(produk.kategori) : "");
   const toko = await ambilPengaturanToko();
@@ -87,7 +93,7 @@ export default async function HalamanDetailProduk({ params }) {
         <h2 className="text-xl font-bold">Produk lainnya</h2>
         <ProdukTerkait id={produk.id} kategori={produk.kategori} />
       </section>
-      <div className="md:col-span-2"><UlasanProduk produkId={produk.id} ulasan={ulasan || []} /></div>
+      <div className="md:col-span-2"><UlasanProduk produkId={produk.id} ulasan={daftarUlasanPublik} jumlahUlasan={jumlahUlasanDisetujui} rataRataRating={rataRataRating} /></div>
     </article>
   );
 }

@@ -3,12 +3,12 @@
 import { useActionState } from "react";
 import { kirimUlasan } from "@/app/ulasan/actions";
 
-export default function UlasanProduk({ produkId, ulasan = [] }) {
+export default function UlasanProduk({ produkId, ulasan = [], jumlahUlasan = ulasan.length, rataRataRating = null }) {
   const [state, action, pending] = useActionState(kirimUlasan, null);
-  const rataRata = ulasan.length ? (ulasan.reduce((sum, item) => sum + item.rating, 0) / ulasan.length).toFixed(1) : "—";
+  const ratingTampil = Number.isFinite(rataRataRating) ? rataRataRating.toFixed(1) : "—";
   return <section className="mt-8 border-t border-garis pt-6">
     <h2 className="text-xl font-bold">Ulasan pembeli</h2>
-    <p className="mt-1 text-sm text-teks-lembut">{ulasan.length ? `★ ${rataRata} dari 5 · ${ulasan.length} ulasan` : "Belum ada ulasan yang disetujui."}</p>
+    <p className="mt-1 text-sm text-teks-lembut">{jumlahUlasan ? `Rating rata-rata ${ratingTampil}/5 · ${jumlahUlasan} ulasan disetujui` : "Belum ada ulasan yang disetujui."}</p>
     <ul className="mt-4 flex flex-col gap-3">{ulasan.map((item) => <li key={item.id} className="rounded-xl border border-garis p-4"><div className="flex justify-between gap-3"><strong>{item.nama}</strong><span aria-label={`Rating ${item.rating} dari 5`} className="text-amber-600">{"★".repeat(item.rating)}{"☆".repeat(5 - item.rating)}</span></div><p className="mt-2 whitespace-pre-line text-sm text-teks-lembut">{item.isi}</p></li>)}</ul>
     <form action={action} className="mt-5 grid gap-3 rounded-xl border border-garis p-4 sm:grid-cols-2">
       <input type="hidden" name="produk_id" value={produkId} />
