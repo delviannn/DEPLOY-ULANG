@@ -75,7 +75,7 @@ function bacaDataProduk(formData) {
   if (!Array.isArray(varian) || varian.length > 20 || varian.some((item) =>
     !item || typeof item.nama !== "string" || item.nama.trim().length < 1 || item.nama.length > 80 ||
     (item.harga !== undefined && (!Number.isSafeInteger(item.harga) || item.harga < 0 || item.harga > 1000000000))
-  )) return { error: "Varian harus berupa daftar nama dan harga yang valid (maksimal 20).", fieldErrors: { varian: "Gunakan daftar JSON berisi nama dan harga yang valid (maksimal 20 varian)." } };
+  ) || new Set(varian.map((item) => item.nama.trim().toLocaleLowerCase("id"))).size !== varian.length) return { error: "Varian harus berupa daftar nama dan harga yang unik dan valid (maksimal 20).", fieldErrors: { varian: "Nama varian tidak boleh duplikat; gunakan nama dan harga yang valid (maksimal 20 varian)." } };
   const fieldErrors = {};
   if (!nama || nama.length > 150) fieldErrors.nama = "Nama wajib diisi dan maksimal 150 karakter.";
   if (!hargaRaw || !Number.isSafeInteger(harga) || harga <= 0 || harga > 1000000000) fieldErrors.harga = "Harga harus bilangan bulat antara Rp1 dan Rp1.000.000.000.";
@@ -117,7 +117,8 @@ export async function imporProdukCSV(_prevState, formData) {
   if (rows.length < 2 || rows.length > 501) return { error: "CSV harus berisi header dan maksimal 500 produk." };
   const headers = rows.shift().map((header) => header.trim().toLowerCase());
   if (!headers.includes("nama") || !headers.includes("harga")) return { error: "Header wajib: nama,harga. Header lain: kategori,deskripsi,foto_url,stok,aktif,harga_coret,urutan,varian." };
-  const products = [];
+  const rowsValid = [];
+  const rowsGagal = [];
   for (let index = 0; index < rows.length; index++) {
     const values = Object.fromEntries(headers.map((header, column) => [header, rows[index][column] || ""]));
     const item = new FormData();
@@ -125,20 +126,37 @@ export async function imporProdukCSV(_prevState, formData) {
       item.set(key, values[key] || (key === "varian" ? "[]" : key === "stok" ? "0" : key === "urutan" ? "0" : key === "aktif" ? "true" : ""));
     }
     const result = bacaDataProduk(item);
-    if (result.error) return { error: `Baris ${index + 2}: ${result.error}` };
-    products.push(result.data);
+    if (result.error) rowsGagal.push({ baris: index + 2, pesan: result.error });
+    else rowsValid.push({ baris: index + 2, data: result.data });
   }
-  const categoryNames = [...new Set(products.map((item) => item.kategori).filter(Boolean))];
-  if (categoryNames.length) {
-    const categories = categoryNames.map((nama) => ({ nama, slug: nama.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") }));
+  let rowsSiapImpor = rowsValid;
+  const productsByCategory = [...new Set(rowsValid.map(({ data }) => data.kategori).filter(Boolean))];
+  if (productsByCategory.length) {
+    const categories = productsByCategory.map((nama) => ({ nama, slug: nama.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") }));
     const { error: categoryError } = await supabase.from("kategori").upsert(categories, { onConflict: "nama", ignoreDuplicates: true });
-    if (categoryError) return { error: "Kategori dari CSV tidak dapat disimpan. Periksa nama/slug kategori yang bentrok." };
+    if (categoryError) {
+      const categorySet = new Set(productsByCategory);
+      for (const row of rowsValid) if (row.data.kategori && categorySet.has(row.data.kategori)) rowsGagal.push({ baris: row.baris, pesan: "Kategori gagal disimpan." });
+      rowsSiapImpor = rowsValid.filter(({ data }) => !data.kategori);
+    }
   }
-  const { error } = await supabase.from("produk").insert(products);
-  if (error) return { error: "Produk gagal diimpor. Periksa format dan batasan database." };
-  await catatAksiAdmin(supabase, "impor", "produk", products.length);
-  revalidatePath("/admin"); revalidatePath("/");
-  return { sukses: `${products.length} produk berhasil diimpor.` };
+  let jumlahBerhasil = 0;
+  if (rowsSiapImpor.length) {
+    const { error } = await supabase.from("produk").insert(rowsSiapImpor.map(({ data }) => data));
+    if (error) {
+      for (const row of rowsSiapImpor) rowsGagal.push({ baris: row.baris, pesan: "Produk gagal disimpan ke database." });
+    } else {
+      jumlahBerhasil = rowsSiapImpor.length;
+      await catatAksiAdmin(supabase, "impor", "produk", jumlahBerhasil);
+      revalidatePath("/admin"); revalidatePath("/");
+    }
+  }
+  const ringkasan = { berhasil: jumlahBerhasil, gagal: rowsGagal.length, barisGagal: rowsGagal };
+  return {
+    ...(jumlahBerhasil ? { sukses: `${jumlahBerhasil} produk berhasil diimpor.` } : {}),
+    ...(jumlahBerhasil === 0 && rowsGagal.length ? { error: "Tidak ada produk yang berhasil diimpor." } : {}),
+    ringkasan,
+  };
 }
 
 // US-04: login admin dengan email dan password.
@@ -251,6 +269,20 @@ export async function ubahStatusProduk(idRaw, aktif) {
   return { sukses: true };
 }
 
+export async function geserUrutanProduk(idRaw, arah) {
+  const supabase = await sesiAdmin();
+  if (!supabase) return { error: "Sesi admin habis. Silakan login kembali." };
+  const id = Number(idRaw);
+  if (!Number.isSafeInteger(id) || id < 1 || ![-1, 1].includes(arah)) return { error: "Data urutan produk tidak valid." };
+  const { data, error } = await supabase.rpc("move_product_order", { p_product_id: id, p_direction: arah });
+  if (error) return { error: "Urutan produk gagal diubah. Pastikan migrasi terbaru sudah dijalankan." };
+  if (!data) return { error: arah < 0 ? "Produk sudah berada di urutan pertama." : "Produk sudah berada di urutan terakhir." };
+  await catatAksiAdmin(supabase, arah < 0 ? "naikkan_urutan" : "turunkan_urutan", "produk", id);
+  revalidatePath("/admin");
+  revalidatePath("/");
+  return { sukses: true };
+}
+
 export async function simpanPengaturanToko(_prevState, formData) {
   const supabase = await sesiAdmin();
   if (!supabase) return { error: "Sesi admin habis. Silakan login kembali." };
@@ -262,14 +294,27 @@ export async function simpanPengaturanToko(_prevState, formData) {
   const bannerJudul = formData.get("banner_judul")?.toString().trim() || "";
   const bannerDeskripsi = formData.get("banner_deskripsi")?.toString().trim() || "";
   const bannerFotoRaw = formData.get("banner_foto")?.toString().trim() || "";
+  const bannerTautanRaw = formData.get("banner_tautan")?.toString().trim() || "";
   const bannerAktif = formData.get("banner_aktif") === "true";
   if (!nama || nama.length > 100 || !tagline || tagline.length > 240 || !/^62\d{8,13}$/.test(nomor) || alamat.length > 300 || jam.length > 120 || bannerJudul.length > 120 || bannerDeskripsi.length > 500) {
     return { error: "Periksa nama, tagline, nomor WhatsApp (format 62...), dan batas panjang isian." };
   }
   const bannerFoto = bannerFotoRaw ? sanitizeFotoUrl(bannerFotoRaw) : null;
   if (bannerFotoRaw && bannerFoto === "/produk/placeholder.svg") return { error: "URL foto banner harus berupa HTTPS atau path lokal yang aman." };
+  let bannerTautan = null;
+  if (bannerTautanRaw) {
+    if (bannerTautanRaw.length > 500 || /[\\\u0000-\u001f]/.test(bannerTautanRaw)) return { error: "Tautan banner tidak valid." };
+    if (bannerTautanRaw.startsWith("/") && !bannerTautanRaw.startsWith("//")) bannerTautan = bannerTautanRaw;
+    else {
+      try {
+        const url = new URL(bannerTautanRaw);
+        if (url.protocol !== "https:" || url.username || url.password) return { error: "Tautan banner harus berupa URL HTTPS atau path lokal." };
+        bannerTautan = url.toString();
+      } catch { return { error: "Tautan banner harus berupa URL HTTPS atau path lokal." }; }
+    }
+  }
   if (bannerAktif && !bannerJudul) return { error: "Judul wajib diisi untuk mengaktifkan banner." };
-  const { error } = await supabase.from("pengaturan_toko").upsert({ id: true, nama, tagline, nomor_whatsapp: nomor, alamat, jam_buka: jam, banner_judul: bannerJudul || null, banner_deskripsi: bannerDeskripsi || null, banner_foto: bannerFoto, banner_aktif: bannerAktif, diperbarui_at: new Date().toISOString() }, { onConflict: "id" });
+  const { error } = await supabase.from("pengaturan_toko").upsert({ id: true, nama, tagline, nomor_whatsapp: nomor, alamat, jam_buka: jam, banner_judul: bannerJudul || null, banner_deskripsi: bannerDeskripsi || null, banner_foto: bannerFoto, banner_tautan: bannerTautan, banner_aktif: bannerAktif, diperbarui_at: new Date().toISOString() }, { onConflict: "id" });
   if (error) return { error: "Pengaturan toko gagal disimpan." };
   await catatAksiAdmin(supabase, "ubah", "pengaturan_toko");
   revalidatePath("/"); revalidatePath("/kontak"); revalidatePath("/tentang");
@@ -327,7 +372,7 @@ export async function tambahProduk(_prevState, formData) {
   }
 
   const parsed = bacaDataProduk(formData);
-  if (parsed.error) return { error: parsed.error };
+  if (parsed.error) return { error: parsed.error, fieldErrors: parsed.fieldErrors || {} };
   const foto = await unggahFoto(formData, supabase, parsed.data.foto_url);
   if (foto.error) return { error: foto.error };
 
@@ -363,7 +408,7 @@ export async function ubahProduk(_prevState, formData) {
   }
 
   const parsed = bacaDataProduk(formData);
-  if (parsed.error) return { error: parsed.error };
+  if (parsed.error) return { error: parsed.error, fieldErrors: parsed.fieldErrors || {} };
   const foto = await unggahFoto(formData, supabase, parsed.data.foto_url);
   if (foto.error) return { error: foto.error };
 

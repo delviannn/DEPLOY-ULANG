@@ -8,6 +8,10 @@ import InteraksiProduk from "@/components/InteraksiProduk";
 import UlasanProduk from "@/components/UlasanProduk";
 import { ambilPengaturanToko } from "@/lib/toko-public";
 
+function slugKategori(nama) {
+  return nama.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
 export async function generateMetadata({ params }) {
   const { id } = await params;
   const supabase = buatSupabaseServer();
@@ -35,7 +39,13 @@ export default async function HalamanDetailProduk({ params }) {
   if (error || !produk) {
     notFound();
   }
-  const { data: ulasan } = await supabase.from("ulasan").select("id,nama,rating,isi,created_at").eq("produk_id", produk.id).eq("status", "disetujui").order("created_at", { ascending: false }).limit(50);
+  const [{ data: varianTabel, error: errorVarian }, { data: ulasan }, { data: kategoriData }] = await Promise.all([
+    supabase.from("varian_produk").select("id,nama,harga,urutan").eq("produk_id", produk.id).order("urutan", { ascending: true }),
+    supabase.from("ulasan").select("id,nama,rating,isi,created_at").eq("produk_id", produk.id).eq("status", "disetujui").order("created_at", { ascending: false }).limit(50),
+    produk.kategori ? supabase.from("kategori").select("slug").eq("nama", produk.kategori).maybeSingle() : Promise.resolve({ data: null }),
+  ]);
+  if (!errorVarian && varianTabel) produk.varian = varianTabel;
+  const kategoriSlug = kategoriData?.slug || (produk.kategori ? slugKategori(produk.kategori) : "");
   const toko = await ambilPengaturanToko();
 
   return (
@@ -52,9 +62,7 @@ export default async function HalamanDetailProduk({ params }) {
           ← Kembali ke katalog
         </Link>
         <div>
-          <span className="rounded-md bg-permukaan px-2.5 py-1 text-xs font-semibold text-teks-lembut border border-garis">
-            {produk.kategori || "Umum"}
-          </span>
+          {produk.kategori && kategoriSlug ? <Link href={`/kategori/${kategoriSlug}`} className="inline-flex rounded-md bg-permukaan px-2.5 py-1 text-xs font-semibold text-teks-lembut border border-garis hover:text-utama" aria-label={`Lihat kategori ${produk.kategori}`}>{produk.kategori}</Link> : <span className="rounded-md bg-permukaan px-2.5 py-1 text-xs font-semibold text-teks-lembut border border-garis">{produk.kategori || "Umum"}</span>}
           <h1 className="mt-2 text-3xl font-extrabold leading-tight tracking-tight text-teks">
             {produk.nama}
           </h1>

@@ -8,11 +8,13 @@ export async function GET(request) {
     .split(",").filter((id) => /^\d{1,15}$/.test(id)).map(Number).filter(Number.isSafeInteger))].slice(0, 12);
   if (!ids.length) return NextResponse.json({ produk: [] }, { headers: { "Cache-Control": "no-store" } });
   const supabase = buatSupabaseServer();
-  const { data, error } = await supabase.from("produk")
-    .select("id,nama,harga,harga_coret,stok,deskripsi,foto_url,kategori,created_at,varian")
-    .in("id", ids).eq("aktif", true);
+  const [{ data, error }, { data: categories }] = await Promise.all([
+    supabase.from("produk").select("id,nama,harga,harga_coret,stok,deskripsi,foto_url,kategori,created_at,varian").in("id", ids).eq("aktif", true),
+    supabase.from("kategori").select("nama,slug"),
+  ]);
   if (error) return NextResponse.json({ error: "Produk tidak dapat dimuat." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   const posisi = new Map(ids.map((id, index) => [id, index]));
+  const slugByCategory = new Map((categories || []).map((category) => [category.nama, category.slug]));
   data.sort((a, b) => posisi.get(a.id) - posisi.get(b.id));
-  return NextResponse.json({ produk: data }, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({ produk: data.map((item) => ({ ...item, kategori_slug: slugByCategory.get(item.kategori) || "" })) }, { headers: { "Cache-Control": "no-store" } });
 }

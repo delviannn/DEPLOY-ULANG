@@ -10,9 +10,9 @@ const KEYS = {
   terakhir: "katalog:terakhir-dilihat:v1",
   bandingkan: "katalog:bandingkan:v1",
 };
-const JUDUL = { favorit: "Produk Favorit", terakhir: "Terakhir Dilihat", bandingkan: "Bandingkan Produk" };
+const JUDUL = { favorit: "Produk Favorit", terakhir: "Terakhir dilihat", bandingkan: "Bandingkan Produk" };
 
-export default function KoleksiBrowser({ jenis }) {
+export default function KoleksiBrowser({ jenis, ringkas = false }) {
   const [ids, setIds] = useState([]);
   const [produk, setProduk] = useState([]);
   const [error, setError] = useState("");
@@ -47,8 +47,8 @@ export default function KoleksiBrowser({ jenis }) {
     setProduk((old) => old.filter((item) => String(item.id) !== String(id)));
   }
 
-  return <section className="py-8">
-    <h1 className="text-2xl font-extrabold text-teks">{JUDUL[jenis]}</h1>
+  return <section aria-labelledby={`judul-koleksi-${jenis}`} className={ringkas ? "py-6" : "py-8"}>
+    {ringkas ? <h2 id={`judul-koleksi-${jenis}`} className="text-xl font-extrabold text-teks">{JUDUL[jenis]}</h2> : <h1 id={`judul-koleksi-${jenis}`} className="text-2xl font-extrabold text-teks">{JUDUL[jenis]}</h1>}
     {error ? <p role="alert" className="mt-5 rounded-xl border border-red-300 bg-red-50 p-4 text-red-700">{error}</p>
       : !siap ? <p className="mt-5 text-sm text-teks-lembut">Memuat daftar…</p>
       : !ids.length ? <div className="mt-5 rounded-xl border border-garis p-6 text-sm text-teks-lembut">Belum ada produk di daftar ini. <Link className="font-semibold text-utama underline" href="/">Jelajahi katalog</Link></div>

@@ -61,6 +61,6 @@ export default function InteraksiProduk({ produk }) {
     <button type="button" aria-pressed={favorit} onClick={() => toggle(FAVORITES, setFavorit, favorit, 100)} className="rounded-lg border border-garis px-3 py-2 text-sm">{favorit ? "♥ Favorit" : "♡ Simpan favorit"}</button>
     <button type="button" aria-pressed={dibandingkan} onClick={() => toggle(COMPARE, setDibandingkan, dibandingkan, 2)} className="rounded-lg border border-garis px-3 py-2 text-sm">{dibandingkan ? "✓ Dibandingkan" : "Bandingkan"}</button>
     <button type="button" onClick={share} className="rounded-lg border border-garis px-3 py-2 text-sm">Bagikan / salin link</button>
-    <span className="sr-only" aria-live="polite">{pesan}</span>
+    <p role="status" aria-live="polite" className="basis-full min-h-5 text-sm text-teks-lembut">{pesan}</p>
   </div>;
 }

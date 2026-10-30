@@ -18,6 +18,8 @@ export default async function HalamanUbahProduk({ params }) {
   if (error || !produk) {
     notFound();
   }
+  const { data: varianTabel, error: errorVarian } = await supabase.from("varian_produk").select("id,nama,harga,urutan").eq("produk_id", produk.id).order("urutan", { ascending: true });
+  if (!errorVarian && varianTabel) produk.varian = varianTabel;
   const sesi = await buatSupabaseSesi();
   const { data: kategori } = await sesi.from("kategori").select("nama").order("nama");
 

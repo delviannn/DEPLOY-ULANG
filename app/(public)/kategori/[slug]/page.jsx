@@ -18,6 +18,6 @@ export default async function HalamanKategori({ params }) {
   return <section className="py-10">
     <a href="/" className="text-sm text-utama hover:underline">← Semua produk</a>
     <h1 className="mt-3 text-3xl font-extrabold">{kategori.nama}</h1>
-    {productError ? <p className="mt-6 rounded-lg border border-garis p-4">Katalog kategori belum dapat dimuat.</p> : produk?.length ? <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3">{produk.map((item) => <KartuProduk key={item.id} produk={item} />)}</div> : <p className="mt-6 text-teks-lembut">Belum ada produk di kategori ini.</p>}
+    {productError ? <p className="mt-6 rounded-lg border border-garis p-4">Katalog kategori belum dapat dimuat.</p> : produk?.length ? <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3">{produk.map((item) => <KartuProduk key={item.id} produk={item} kategoriSlug={kategori.slug} />)}</div> : <p className="mt-6 text-teks-lembut">Belum ada produk di kategori ini.</p>}
   </section>;
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { toko } from "@/lib/toko";
 import { buatSupabaseServer } from "@/lib/supabase";
 import { ambilPengaturanToko } from "@/lib/toko-public";
+import KoleksiBrowser from "@/components/KoleksiBrowser";
 
 // US-01 & US-11: katalog produk dengan pencarian dan filter kategori
 export default async function HalamanKatalog({ searchParams }) {
@@ -23,7 +24,7 @@ export default async function HalamanKatalog({ searchParams }) {
   ).toString().trim();
   const sort = ["baru", "harga-naik", "harga-turun", "unggulan"].includes(resolvedParams.urut)
     ? resolvedParams.urut
-    : "baru";
+    : "unggulan";
   const halaman = Math.max(1, Math.min(10000, Number.parseInt(resolvedParams.halaman, 10) || 1));
   const ukuranHalaman = 12;
 
@@ -51,14 +52,15 @@ export default async function HalamanKatalog({ searchParams }) {
   const { data: daftarProduk, error, count } = await query.range((halaman - 1) * ukuranHalaman, halaman * ukuranHalaman - 1);
 
   // Ambil daftar seluruh kategori unik untuk chips filter
-  const { data: semuaProduk } = await supabase
-    .from("produk")
-    .select("kategori")
-    .eq("aktif", true);
+  const [{ data: semuaProduk }, { data: daftarKategoriDB }] = await Promise.all([
+    supabase.from("produk").select("kategori").eq("aktif", true),
+    supabase.from("kategori").select("nama,slug"),
+  ]);
 
   const daftarKategori = Array.from(
     new Set(semuaProduk?.map((p) => p.kategori).filter(Boolean))
   );
+  const slugKategori = new Map((daftarKategoriDB || []).map((item) => [item.nama, item.slug]));
   const { data: clicks } = await supabase.from("ringkasan_klik_produk").select("produk_id,jumlah_klik").order("jumlah_klik", { ascending: false }).limit(5);
   const produkTerlaris = new Set((clicks || []).map((item) => item.produk_id));
 
@@ -87,7 +89,7 @@ export default async function HalamanKatalog({ searchParams }) {
       {toko.bannerAktif && <section aria-label="Promo toko" className="relative mt-5 overflow-hidden rounded-2xl border border-garis bg-utama text-white">
         {toko.bannerFoto && <img src={toko.bannerFoto} alt="" className="absolute inset-0 h-full w-full object-cover" />}
         <div className="absolute inset-0 bg-slate-950/55" />
-        <div className="relative p-6 sm:p-8"><h2 className="text-2xl font-extrabold">{toko.bannerJudul}</h2>{toko.bannerDeskripsi && <p className="mt-2 max-w-2xl text-sm leading-6">{toko.bannerDeskripsi}</p>}<a href="#produk" className="mt-4 inline-flex rounded-lg bg-white px-4 py-2 text-sm font-bold text-utama">Lihat produk</a></div>
+        <div className="relative p-6 sm:p-8"><h2 className="text-2xl font-extrabold">{toko.bannerJudul}</h2>{toko.bannerDeskripsi && <p className="mt-2 max-w-2xl text-sm leading-6">{toko.bannerDeskripsi}</p>}<a href={toko.bannerTautan || "#produk"} target={toko.bannerTautan?.startsWith("https://") ? "_blank" : undefined} rel={toko.bannerTautan?.startsWith("https://") ? "noopener noreferrer" : undefined} className="mt-4 inline-flex rounded-lg bg-white px-4 py-2 text-sm font-bold text-utama">Lihat promo</a></div>
       </section>}
 
       <section id="produk" aria-labelledby="judul-produk" className="flex scroll-mt-24 flex-col gap-6 py-10 sm:py-14">
@@ -137,7 +139,7 @@ export default async function HalamanKatalog({ searchParams }) {
         ) : (
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
             {daftarProduk.map((produk) => (
-              <KartuProduk key={produk.id} produk={produk} terlaris={produkTerlaris.has(produk.id)} />
+              <KartuProduk key={produk.id} produk={produk} kategoriSlug={slugKategori.get(produk.kategori)} terlaris={produkTerlaris.has(produk.id)} />
             ))}
           </div>
         )}
@@ -149,6 +151,8 @@ export default async function HalamanKatalog({ searchParams }) {
           </nav>
         )}
       </section>
+
+      <KoleksiBrowser jenis="terakhir" ringkas />
     </>
   );
 }

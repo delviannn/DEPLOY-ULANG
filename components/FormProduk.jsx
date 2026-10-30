@@ -13,6 +13,7 @@ export default function FormProduk({ action, produk = {}, labelTombol = "Simpan 
   const [nama, setNama] = useState(produk.nama || "");
   const [kategori, setKategori] = useState(produk.kategori || "");
   const [deskripsi, setDeskripsi] = useState(produk.deskripsi || "");
+  const [varian, setVarian] = useState(Array.isArray(produk.varian) ? produk.varian.map(({ nama: namaVarian, harga }) => ({ nama: namaVarian || "", harga: harga === undefined || harga === null ? "" : Number(harga) })) : []);
 
   // State untuk AI generator
   const [pesanAI, setPesanAI] = useState(null);
@@ -98,7 +99,18 @@ export default function FormProduk({ action, produk = {}, labelTombol = "Simpan 
 
       <Input label="Harga sebelum promo (opsional)" name="harga_coret" type="number" min="0" error={state?.fieldErrors?.harga_coret} defaultValue={produk.harga_coret ?? ""} placeholder="Kosongkan bila tidak promo" />
       <Input label="Foto tambahan (URL, satu per baris)" name="foto_lainnya" error={state?.fieldErrors?.foto_lainnya} textarea defaultValue={(produk.foto_lainnya || []).join("\n")} placeholder="https://..." />
-      <Input label="Varian (JSON)" name="varian" error={state?.fieldErrors?.varian} textarea defaultValue={JSON.stringify(produk.varian || [], null, 2)} placeholder={'[{"nama":"250 g","harga":45000}]'} />
+      <fieldset className="flex flex-col gap-3 rounded-xl border border-garis p-4">
+        <legend className="px-1 text-sm font-semibold">Varian dan harga per ukuran</legend>
+        <input type="hidden" name="varian" value={JSON.stringify(varian)} />
+        {varian.map((item, index) => <div key={index} className="grid gap-2 rounded-lg bg-permukaan p-3 sm:grid-cols-[1fr_10rem_auto] sm:items-end">
+          <label className="flex flex-col gap-1 text-sm font-medium">Nama varian<input value={item.nama} onChange={(event) => setVarian((lama) => lama.map((varianItem, i) => i === index ? { ...varianItem, nama: event.target.value } : varianItem))} maxLength={80} required className="rounded-lg border border-garis bg-latar px-3 py-2 font-normal" placeholder="Contoh: 250 g" /></label>
+          <label className="flex flex-col gap-1 text-sm font-medium">Harga (Rp)<input type="number" min="0" max="1000000000" step="1" value={item.harga} onChange={(event) => setVarian((lama) => lama.map((varianItem, i) => i === index ? { ...varianItem, harga: event.target.value === "" ? "" : Number(event.target.value) } : varianItem))} required className="rounded-lg border border-garis bg-latar px-3 py-2 font-normal" placeholder="45000" /></label>
+          <button type="button" onClick={() => setVarian((lama) => lama.filter((_, i) => i !== index))} className="rounded-lg border border-garis px-3 py-2 text-sm text-bahaya">Hapus</button>
+        </div>)}
+        {state?.fieldErrors?.varian && <p className="text-xs font-medium text-red-700" role="alert">{state.fieldErrors.varian}</p>}
+        <button type="button" disabled={varian.length >= 20} onClick={() => setVarian((lama) => [...lama, { nama: "", harga: "" }])} className="w-fit rounded-lg border border-garis px-3 py-2 text-sm font-semibold disabled:opacity-50">Tambah varian</button>
+        <p className="text-xs text-teks-lembut">Tambahkan ukuran dan harga jualnya. Maksimal 20 varian.</p>
+      </fieldset>
 
       <label className="flex flex-col gap-1.5 text-sm font-semibold">
         Status Produk

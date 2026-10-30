@@ -2,6 +2,7 @@ import { formatRupiah } from "@/lib/format";
 import Tombol from "@/components/Tombol";
 import TombolHapusProduk from "@/components/TombolHapusProduk";
 import TombolStatusProduk from "@/components/TombolStatusProduk";
+import TombolUrutanProduk from "@/components/TombolUrutanProduk";
 
 /**
  * @typedef {Object} Produk
@@ -59,6 +60,7 @@ export default function TabelProduk({ daftarProduk }) {
             <th className="px-4 py-3 font-semibold">Kategori</th>
             <th className="px-4 py-3 font-semibold">Harga</th>
             <th className="px-4 py-3 font-semibold">Stok</th>
+            <th className="px-4 py-3 font-semibold">Urutan tampil</th>
             <th className="px-4 py-3 font-semibold">Status</th>
             <th className="px-4 py-3 font-semibold text-right">
               <span className="sr-only">Aksi</span>
@@ -85,6 +87,7 @@ export default function TabelProduk({ daftarProduk }) {
                   {produk.stok !== undefined && produk.stok !== null ? `${produk.stok} pcs` : "Tersedia"}
                 </span>
               </td>
+              <td className="px-4 py-3"><TombolUrutanProduk id={produk.id} nama={produk.nama} /></td>
               <td className="px-4 py-3">
                 <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
                   {produk.aktif === false ? "Nonaktif" : "Aktif"}
