@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { toko } from "@/lib/toko";
 import ThemeToggle from "@/components/ThemeToggle";
 import KeranjangBelanja from "@/components/KeranjangBelanja";
+import TombolBukaAsisten from "@/components/TombolBukaAsisten";
 
 export default function Header({ toko }) {
   return (
@@ -29,6 +29,7 @@ export default function Header({ toko }) {
             <Link href="/terakhir-dilihat" className="text-teks-lembut hover:text-utama">Dilihat</Link>
             <Link href="/bandingkan" className="text-teks-lembut hover:text-utama">Bandingkan</Link>
           </nav>
+          <TombolBukaAsisten />
           <ThemeToggle />
           <KeranjangBelanja nomorWhatsApp={toko.nomorWhatsApp} />
           <span className="hidden items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 md:inline-flex">
