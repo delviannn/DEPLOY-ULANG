@@ -1,88 +1,92 @@
-# Katalog UMKM + Order WhatsApp
+# Katalog Toko Delviann
 
-Template workshop vibe coding Creative Hub App Talent (CHAT) 2026. Repo ini berisi tampilan aplikasi katalog UMKM; tugasmu merangkainya menjadi sistem utuh dengan bantuan AI: database, login admin, keamanan, dan pemesanan lewat WhatsApp.
+Katalog online untuk Toko Delviann. Pengunjung dapat mencari dan memfilter produk, melihat detail, memilih jumlah atau varian, lalu mengirim pesanan melalui WhatsApp. Pemilik toko mengelola katalog melalui halaman admin.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fandixurniawan%2Fkatalog-umkm&project-name=katalog-umkm&repository-name=katalog-umkm)
+**Aplikasi live:** [deploy-ulang.vercel.app](https://deploy-ulang.vercel.app/)  
+**Contoh halaman produk:** [Produk 1](https://deploy-ulang.vercel.app/produk/1)
 
-## Langkah awal
+## Fitur
 
-1. **Salin repo ke akun GitHub-mu.** Klik tombol **Deploy with Vercel** di atas. Vercel akan membuat repo baru di akun GitHub-mu dan langsung men-deploy-nya. Setelah selesai, buka link Vercel-mu: katalog tampil dengan data contoh.
-2. **Buat proyek Supabase.** Masuk ke [supabase.com](https://supabase.com) dengan akun GitHub, lalu buat proyek baru. Simpan password database di tempat aman.
-3. **Siapkan database.** Di Supabase, buka **SQL Editor**, tempel seluruh isi `docs/schema.sql`, lalu klik **Run**. Tabel `produk` terbentuk tanpa produk contoh. Untuk kolom lanjutan seperti stok, harga promo, galeri, kategori, ulasan, dan analitik, jalankan juga `docs/migration-fitur-katalog.sql`.
-4. **Siapkan akun admin.** Buat akun di Supabase Auth dan matikan pendaftaran akun baru di **Authentication > Sign In / Providers**. Akses admin dibatasi dengan `app_metadata.role = "admin"`; gunakan SQL Editor untuk memberi role hanya kepada UUID admin yang benar:
+- Katalog produk dari Supabase dengan pencarian, filter kategori, pengurutan, dan paginasi.
+- Halaman detail produk dengan galeri foto, stok, harga promo, serta pilihan jumlah dan varian.
+- Keranjang dan pemesanan melalui WhatsApp.
+- Admin terlindungi untuk melihat, menambah, mengubah, dan menghapus produk serta mengganti password.
+- Unggah foto produk ke Supabase Storage dan pembuatan deskripsi dengan OpenAI atau Gemini (opsional).
+- Dukungan PWA agar katalog dapat dipasang di perangkat.
 
-   ```sql
-   update auth.users
-   set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role":"admin"}'::jsonb
-   where id = '<UUID_ADMIN_DARI_AUTH_USERS>';
-   ```
+## Menjalankan secara lokal
 
-   Keluar lalu login kembali agar token baru memuat role admin. Jangan memberi role ini lewat `user_metadata`.
-5. **Isi environment variable di Vercel.** Buka proyekmu di Vercel > **Settings > Environment Variables**, lalu isi tiga variabel dari `.env.example`. Nilainya ada di Supabase > **Project Settings > API**. Setelah itu lakukan **Redeploy**.
-6. **Clone repo ke laptop.**
-
-   ```bash
-   git clone https://github.com/<akunmu>/<nama-repo>.git
-   cd <nama-repo>
-   npm install
-   ```
-
-7. **Buat file `.env.local`.** Salin `.env.example` menjadi `.env.local`, lalu isi dengan nilai yang sama seperti di Vercel.
-8. **Jalankan di laptop.**
-
-   ```bash
-   npm run dev
-   ```
-
-   Buka `http://localhost:3000`.
-
-## Alur kerja
-
-Kerjakan satu user story setiap kali, lalu simpan dan kirim perubahan:
+### 1. Clone repo dan pasang dependensi
 
 ```bash
-git add .
-git commit -m "US-01: katalog dari database"
-git push
+git clone https://github.com/<akunmu>/<nama-repo>.git
+cd <nama-repo>
+npm install
 ```
 
-Setiap `git push`, Vercel otomatis men-deploy versi terbaru. Cek hasilnya di link Vercel-mu.
+### 2. Siapkan Supabase
 
-Urutan yang disarankan: US-01, US-02, US-03, US-04, US-05, US-06, lalu fitur bonus. Daftar lengkap ada di `docs/user-stories.md`.
+Buat proyek di [supabase.com](https://supabase.com). Buka **SQL Editor**, lalu jalankan `docs/schema.sql` dan `docs/migration-fitur-katalog.sql` agar skema memiliki kolom dan tabel yang dipakai aplikasi.
 
-## Isi repo
+Buat bucket publik bernama `product-images` di Supabase Storage untuk foto produk.
 
-| File atau folder | Isi |
+Buat akun admin di Supabase Auth dan matikan pendaftaran akun baru di **Authentication > Sign In / Providers**. Beri role admin melalui SQL Editor dengan UUID akun admin yang benar:
+
+```sql
+update auth.users
+set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role":"admin"}'::jsonb
+where id = '<UUID_ADMIN_DARI_AUTH_USERS>';
+```
+
+Keluar lalu masuk kembali agar sesi memuat role baru.
+
+### 3. Atur environment
+
+Salin `.env.example` menjadi `.env.local`, lalu isi nilainya dari **Supabase > Project Settings > API**:
+
+```env
+SUPABASE_URL=
+SUPABASE_PUBLISHABLE_KEY=
+SUPABASE_SECRET_KEY=
+SITE_URL=http://localhost:3000
+```
+
+Pembuatan deskripsi dengan AI bersifat opsional. Isi salah satu `OPENAI_API_KEY` atau `GEMINI_API_KEY` untuk mengaktifkannya. Semua variabel dipakai di server; jangan menambahkan awalan `NEXT_PUBLIC_`.
+
+### 4. Jalankan aplikasi
+
+```bash
+npm run dev
+```
+
+Buka [http://localhost:3000](http://localhost:3000).
+
+## Deployment ke Vercel
+
+Impor repo ke Vercel, tambahkan variabel environment Supabase yang sama pada **Project Settings > Environment Variables**, lalu deploy. Atur `SITE_URL` ke URL produksi, misalnya `https://deploy-ulang.vercel.app`. Tambahkan kunci AI jika fitur pembuatan deskripsi ingin digunakan.
+
+## Konfigurasi toko
+
+- Identitas toko, nomor WhatsApp, alamat, dan jam buka: `lib/toko.js`.
+- Warna aplikasi: bagian `@theme` pada `app/globals.css`.
+- Produk: halaman admin atau Supabase **Table Editor > produk**.
+
+## Struktur penting
+
+| File atau folder | Kegunaan |
 | --- | --- |
-| `AGENTS.md` | Aturan untuk AI agent, dibaca sebelum setiap prompt |
-| `DESIGN.md` | Panduan warna, huruf, dan komponen |
-| `PROMPTS.md` | Jurnal prompt, wajib diisi |
-| `docs/` | Problem statement, PRD, user story, rancangan teknis, skema database, checklist |
-| `lib/toko.js` | Nama toko, nomor WhatsApp, alamat, jam buka |
-| `app/` | Halaman aplikasi |
-| `components/` | Komponen tampilan |
+| `app/` | Halaman katalog, detail produk, informasi toko, dan admin |
+| `components/` | Komponen antarmuka katalog dan pengelolaan produk |
+| `lib/` | Koneksi Supabase, format data, dan konfigurasi toko |
+| `docs/schema.sql` | Skema awal database |
+| `docs/migration-fitur-katalog.sql` | Perluasan skema untuk fitur katalog |
+| `docs/user-stories.md` | Daftar kebutuhan fitur |
+| `docs/checklist-keamanan.md` | Checklist keamanan |
+| `docs/checklist-pengujian.md` | Checklist pengujian manual |
 
-## Menyesuaikan dengan usahamu
+## Teknologi
 
-- Identitas toko: ubah `lib/toko.js`.
-- Warna: ubah bagian `@theme` di `app/globals.css` (lihat `DESIGN.md`).
-- Produk: ubah langsung di Supabase > **Table Editor > produk**.
-
-## Aturan penting
-
-- Jangan menyimpan kunci atau password di kode, dan jangan push file `.env.local`.
-- Jangan memberi awalan `NEXT_PUBLIC_` pada environment variable.
-- Isi `PROMPTS.md` setiap menyelesaikan fitur.
-
-## Sebelum mengumpulkan
-
-1. Jalankan semua poin di `docs/checklist-keamanan.md` dan `docs/checklist-pengujian.md` pada link Vercel.
-2. Lengkapi bagian di bawah ini.
-3. Push perubahan terakhir sebelum batas waktu.
-
-## Tentang aplikasi ini
-
-- **Nama usaha:** Toko Delviann
-- **Pembuat:** Delvian (delviannn)
-- **Link aplikasi:** https://katalog-delvian.vercel.app
-- **Fitur bonus yang dikerjakan:** US-07 (List Produk), US-08 (Tambah Produk), US-09 (Ubah Produk), US-10 (Hapus Produk), US-11 (Filter & Pencarian), US-12 (Pilih Jumlah & Varian), US-13 (PWA), US-14 (Deskripsi AI)
+- Next.js 16 (App Router) dan React 19
+- JavaScript dan Tailwind CSS 4
+- Supabase Auth, Database, dan Storage
+- Vercel
