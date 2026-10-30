@@ -57,6 +57,8 @@ function bacaDataProduk(formData) {
   const harga_coret = hargaCoretRaw ? Number(hargaCoretRaw) : null;
   const fotoRaw = formData.get("foto_url")?.toString().trim() || "";
   const foto_url = sanitizeFotoUrl(fotoRaw);
+  const fotoFile = formData.get("foto_file");
+  const adaFotoUnggahan = fotoFile instanceof File && fotoFile.size > 0;
   const kategori = formData.get("kategori")?.toString().trim() || null;
   const deskripsi = formData.get("deskripsi")?.toString().trim() || null;
   const fotoLainnyaRaw = formData.get("foto_lainnya")?.toString() || "";
@@ -82,7 +84,7 @@ function bacaDataProduk(formData) {
   if (!stokRaw || !Number.isSafeInteger(stok) || stok < 0 || stok > 1000000) fieldErrors.stok = "Stok harus bilangan bulat dari 0 sampai 1.000.000.";
   if (!Number.isSafeInteger(urutan) || urutan < 0 || urutan > 1000000) fieldErrors.urutan = "Urutan harus bilangan bulat dari 0 sampai 1.000.000.";
   if (harga_coret !== null && (!Number.isSafeInteger(harga_coret) || harga_coret <= harga || harga_coret > 1000000000)) fieldErrors.harga_coret = "Harga sebelum promo harus lebih tinggi dari harga jual.";
-  if (fotoRaw && foto_url === "/produk/placeholder.svg") fieldErrors.foto_url = "Masukkan URL HTTPS atau path lokal yang aman.";
+  if (!adaFotoUnggahan && fotoRaw && foto_url === "/produk/placeholder.svg") fieldErrors.foto_url = "Masukkan URL HTTPS atau path lokal yang aman.";
   if (Object.keys(fieldErrors).length) return { error: "Periksa kembali isian yang ditandai.", fieldErrors };
   return { data: { nama, harga, stok, urutan, harga_coret, foto_url, foto_lainnya, kategori: kategori?.slice(0, 60) || null, deskripsi: deskripsi?.slice(0, 3000) || null, aktif: formData.get("aktif") === "true", varian } };
 }
