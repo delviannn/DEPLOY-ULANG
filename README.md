@@ -1,4 +1,4 @@
-# Katalog Toko Delviann
+﻿# Katalog Toko Delviann
 
 Katalog online untuk Toko Delviann. Pengunjung dapat mencari dan memfilter produk, melihat detail, memilih jumlah atau varian, lalu mengirim pesanan melalui WhatsApp. Pemilik toko mengelola katalog melalui halaman admin.
 
@@ -8,11 +8,16 @@ Katalog online untuk Toko Delviann. Pengunjung dapat mencari dan memfilter produ
 ## Fitur
 
 - Katalog produk dari Supabase dengan pencarian, filter kategori, pengurutan, dan paginasi.
-- Halaman detail produk dengan galeri foto, stok, harga promo, serta pilihan jumlah dan varian.
-- Keranjang dan pemesanan melalui WhatsApp.
-- Admin terlindungi untuk melihat, menambah, mengubah, dan menghapus produk serta mengganti password.
+- Halaman detail produk dengan galeri foto, badge Baru/Terlaris/Promo, stok, serta pilihan jumlah dan varian.
+- Favorit, produk terakhir dilihat, perbandingan dua produk, dan kontrol keranjang untuk mengubah jumlah atau menghapus item.
+- Pemesanan satu produk atau semua isi keranjang melalui WhatsApp.
+- Admin terlindungi untuk mengelola produk, kategori, status aktif, urutan tampil, akun admin, pengaturan toko, dan moderasi ulasan.
+- Ringkasan produk dan aktivitas admin, serta impor dan ekspor CSV.
 - Unggah foto produk ke Supabase Storage dan pembuatan deskripsi dengan OpenAI atau Gemini (opsional).
-- Dukungan PWA agar katalog dapat dipasang di perangkat.
+- Asisten tanya produk berbasis AI (opsional), ulasan dengan moderasi admin, banner promo, mode gelap, dan PWA.
+- Halaman Tentang/Kontak, berbagi tautan produk, metadata SEO, sitemap, dan robots.txt.
+
+Fitur yang memakai tabel tambahan memerlukan `docs/migration-fitur-katalog.sql`. Daftar kebutuhan awal ada di `docs/user-stories.md`.
 
 ## Menjalankan secara lokal
 
@@ -90,3 +95,4 @@ Impor repo ke Vercel, tambahkan variabel environment Supabase yang sama pada **P
 - JavaScript dan Tailwind CSS 4
 - Supabase Auth, Database, dan Storage
 - Vercel
+

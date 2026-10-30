@@ -51,33 +51,94 @@ function bacaDataProduk(formData) {
   const stokRaw = formData.get("stok")?.toString().trim() || "";
   const harga = Number(hargaRaw);
   const stok = Number(stokRaw);
+  const urutanRaw = formData.get("urutan")?.toString().trim() || "0";
+  const urutan = Number(urutanRaw);
   const hargaCoretRaw = formData.get("harga_coret")?.toString().trim();
   const harga_coret = hargaCoretRaw ? Number(hargaCoretRaw) : null;
-  const foto_url = sanitizeFotoUrl(formData.get("foto_url")?.toString());
+  const fotoRaw = formData.get("foto_url")?.toString().trim() || "";
+  const foto_url = sanitizeFotoUrl(fotoRaw);
   const kategori = formData.get("kategori")?.toString().trim() || null;
   const deskripsi = formData.get("deskripsi")?.toString().trim() || null;
   const fotoLainnyaRaw = formData.get("foto_lainnya")?.toString() || "";
-  if (fotoLainnyaRaw.length > 6000) return { error: "Daftar foto tambahan terlalu panjang." };
+  if (fotoLainnyaRaw.length > 6000) return { error: "Daftar foto tambahan terlalu panjang.", fieldErrors: { foto_lainnya: "Maksimal 6.000 karakter." } };
   const foto_lainnya = fotoLainnyaRaw
     .split(/\r?\n/).map((url) => url.trim()).filter(Boolean).slice(0, 10)
     .map((url) => sanitizeFotoUrl(url)).filter((url) => url !== "/produk/placeholder.svg");
   let varian = [];
   const varianRaw = formData.get("varian")?.toString() || "[]";
-  if (varianRaw.length > 20000) return { error: "Data varian terlalu panjang." };
+  if (varianRaw.length > 20000) return { error: "Data varian terlalu panjang.", fieldErrors: { varian: "Maksimal 20.000 karakter." } };
   try {
     varian = JSON.parse(varianRaw);
   } catch {
-    return { error: "Format varian harus berupa JSON yang valid." };
+    return { error: "Format varian harus berupa JSON yang valid.", fieldErrors: { varian: "Periksa format JSON varian." } };
   }
   if (!Array.isArray(varian) || varian.length > 20 || varian.some((item) =>
     !item || typeof item.nama !== "string" || item.nama.trim().length < 1 || item.nama.length > 80 ||
     (item.harga !== undefined && (!Number.isSafeInteger(item.harga) || item.harga < 0 || item.harga > 1000000000))
-  )) return { error: "Varian harus berupa daftar nama dan harga yang valid (maksimal 20)." };
-  if (!nama || nama.length > 150) return { error: "Nama produk wajib diisi dan maksimal 150 karakter." };
-  if (!hargaRaw || !Number.isSafeInteger(harga) || harga < 0 || harga > 1000000000) return { error: "Harga produk tidak valid." };
-  if (!stokRaw || !Number.isSafeInteger(stok) || stok < 0 || stok > 1000000) return { error: "Stok harus berupa bilangan bulat dari 0 sampai 1.000.000." };
-  if (harga_coret !== null && (!Number.isSafeInteger(harga_coret) || harga_coret <= harga || harga_coret > 1000000000)) return { error: "Harga sebelum promo harus lebih tinggi dari harga jual." };
-  return { data: { nama, harga, stok, harga_coret, foto_url, foto_lainnya, kategori: kategori?.slice(0, 60) || null, deskripsi: deskripsi?.slice(0, 3000) || null, aktif: formData.get("aktif") === "true", varian } };
+  )) return { error: "Varian harus berupa daftar nama dan harga yang valid (maksimal 20).", fieldErrors: { varian: "Gunakan daftar JSON berisi nama dan harga yang valid (maksimal 20 varian)." } };
+  const fieldErrors = {};
+  if (!nama || nama.length > 150) fieldErrors.nama = "Nama wajib diisi dan maksimal 150 karakter.";
+  if (!hargaRaw || !Number.isSafeInteger(harga) || harga <= 0 || harga > 1000000000) fieldErrors.harga = "Harga harus bilangan bulat antara Rp1 dan Rp1.000.000.000.";
+  if (!stokRaw || !Number.isSafeInteger(stok) || stok < 0 || stok > 1000000) fieldErrors.stok = "Stok harus bilangan bulat dari 0 sampai 1.000.000.";
+  if (!Number.isSafeInteger(urutan) || urutan < 0 || urutan > 1000000) fieldErrors.urutan = "Urutan harus bilangan bulat dari 0 sampai 1.000.000.";
+  if (harga_coret !== null && (!Number.isSafeInteger(harga_coret) || harga_coret <= harga || harga_coret > 1000000000)) fieldErrors.harga_coret = "Harga sebelum promo harus lebih tinggi dari harga jual.";
+  if (fotoRaw && foto_url === "/produk/placeholder.svg") fieldErrors.foto_url = "Masukkan URL HTTPS atau path lokal yang aman.";
+  if (Object.keys(fieldErrors).length) return { error: "Periksa kembali isian yang ditandai.", fieldErrors };
+  return { data: { nama, harga, stok, urutan, harga_coret, foto_url, foto_lainnya, kategori: kategori?.slice(0, 60) || null, deskripsi: deskripsi?.slice(0, 3000) || null, aktif: formData.get("aktif") === "true", varian } };
+}
+
+function parseCSV(text) {
+  const rows = [];
+  let row = [], field = "", quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (quoted && char === '"' && text[i + 1] === '"') { field += '"'; i++; }
+    else if (char === '"') quoted = !quoted;
+    else if (!quoted && char === ",") { row.push(field); field = ""; }
+    else if (!quoted && (char === "\n" || char === "\r")) {
+      if (char === "\r" && text[i + 1] === "\n") i++;
+      row.push(field); if (row.some((cell) => cell.trim())) rows.push(row);
+      row = []; field = "";
+    } else field += char;
+  }
+  if (quoted) throw new Error("CSV memiliki tanda kutip yang belum ditutup.");
+  row.push(field); if (row.some((cell) => cell.trim())) rows.push(row);
+  return rows;
+}
+
+export async function imporProdukCSV(_prevState, formData) {
+  const supabase = await sesiAdmin();
+  if (!supabase) return { error: "Sesi admin habis. Silakan login kembali." };
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0 || file.size > 5 * 1024 * 1024) return { error: "Pilih file CSV berukuran maksimal 5 MB." };
+  let rows;
+  try { rows = parseCSV((await file.text()).replace(/^\uFEFF/, "")); }
+  catch { return { error: "Format CSV tidak valid. Pastikan semua teks berkutip ditutup." }; }
+  if (rows.length < 2 || rows.length > 501) return { error: "CSV harus berisi header dan maksimal 500 produk." };
+  const headers = rows.shift().map((header) => header.trim().toLowerCase());
+  if (!headers.includes("nama") || !headers.includes("harga")) return { error: "Header wajib: nama,harga. Header lain: kategori,deskripsi,foto_url,stok,aktif,harga_coret,urutan,varian." };
+  const products = [];
+  for (let index = 0; index < rows.length; index++) {
+    const values = Object.fromEntries(headers.map((header, column) => [header, rows[index][column] || ""]));
+    const item = new FormData();
+    for (const key of ["nama", "harga", "kategori", "deskripsi", "foto_url", "foto_lainnya", "stok", "aktif", "harga_coret", "urutan", "varian"]) {
+      item.set(key, values[key] || (key === "varian" ? "[]" : key === "stok" ? "0" : key === "urutan" ? "0" : key === "aktif" ? "true" : ""));
+    }
+    const result = bacaDataProduk(item);
+    if (result.error) return { error: `Baris ${index + 2}: ${result.error}` };
+    products.push(result.data);
+  }
+  const categoryNames = [...new Set(products.map((item) => item.kategori).filter(Boolean))];
+  if (categoryNames.length) {
+    const categories = categoryNames.map((nama) => ({ nama, slug: nama.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") }));
+    const { error: categoryError } = await supabase.from("kategori").upsert(categories, { onConflict: "nama", ignoreDuplicates: true });
+    if (categoryError) return { error: "Kategori dari CSV tidak dapat disimpan. Periksa nama/slug kategori yang bentrok." };
+  }
+  const { error } = await supabase.from("produk").insert(products);
+  if (error) return { error: "Produk gagal diimpor. Periksa format dan batasan database." };
+  await catatAksiAdmin(supabase, "impor", "produk", products.length);
+  revalidatePath("/admin"); revalidatePath("/");
+  return { sukses: `${products.length} produk berhasil diimpor.` };
 }
 
 // US-04: login admin dengan email dan password.
@@ -119,6 +180,102 @@ export async function keluar() {
   redirect("/admin/login");
 }
 
+async function sesiAdmin() {
+  const supabase = await buatSupabaseSesi();
+  const { data: { user } } = await supabase.auth.getUser();
+  return user?.app_metadata?.role === "admin" ? supabase : null;
+}
+
+async function catatAksiAdmin(supabase, aksi, entitas, entitasId = null) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase.from("log_admin").insert({ admin_id: user.id, aksi, entitas, entitas_id: entitasId === null ? null : String(entitasId) });
+}
+
+export async function tambahKategori(_prevState, formData) {
+  const supabase = await sesiAdmin();
+  if (!supabase) return { error: "Sesi admin habis. Silakan login kembali." };
+  const nama = formData.get("nama")?.toString().trim() || "";
+  if (!nama || nama.length > 60) return { error: "Nama kategori wajib diisi (maksimal 60 karakter)." };
+  const slug = nama.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  if (!slug) return { error: "Nama kategori tidak menghasilkan slug yang valid." };
+  const { error } = await supabase.from("kategori").insert({ nama, slug });
+  if (error) return { error: "Kategori gagal ditambahkan. Pastikan nama belum digunakan." };
+  await catatAksiAdmin(supabase, "tambah", "kategori", nama);
+  revalidatePath("/admin/kategori");
+  revalidatePath("/");
+  return { sukses: "Kategori ditambahkan." };
+}
+
+export async function ubahKategori(_prevState, formData) {
+  const supabase = await sesiAdmin();
+  if (!supabase) return { error: "Sesi admin habis. Silakan login kembali." };
+  const id = Number(formData.get("id"));
+  const nama = formData.get("nama")?.toString().trim() || "";
+  if (!Number.isSafeInteger(id) || id < 1 || !nama || nama.length > 60) return { error: "Data kategori tidak valid." };
+  const slug = nama.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  if (!slug) return { error: "Nama kategori tidak menghasilkan slug yang valid." };
+  const { data: renamed, error } = await supabase.rpc("rename_category", { p_id: id, p_nama: nama, p_slug: slug });
+  if (error || !renamed) return { error: "Kategori tidak dapat diubah. Pastikan nama belum digunakan." };
+  await catatAksiAdmin(supabase, "ubah", "kategori", id);
+  revalidatePath("/admin/kategori"); revalidatePath("/admin"); revalidatePath("/");
+  return { sukses: "Kategori dan produk terkait berhasil diperbarui." };
+}
+
+export async function hapusKategori(idRaw) {
+  const supabase = await sesiAdmin();
+  if (!supabase) return { error: "Sesi admin habis. Silakan login kembali." };
+  const id = Number(idRaw);
+  if (!Number.isSafeInteger(id) || id < 1) return { error: "ID kategori tidak valid." };
+  const { data: category } = await supabase.from("kategori").select("nama").eq("id", id).maybeSingle();
+  if (!category) return { error: "Kategori tidak ditemukan." };
+  const { count, error: countError } = await supabase.from("produk").select("id", { count: "exact", head: true }).eq("kategori", category.nama);
+  if (countError) return { error: "Produk terkait tidak dapat diperiksa." };
+  if (count) return { error: "Kategori masih dipakai produk. Ubah kategori produk terlebih dahulu." };
+  const { error } = await supabase.from("kategori").delete().eq("id", id);
+  if (error) return { error: "Kategori gagal dihapus." };
+  await catatAksiAdmin(supabase, "hapus", "kategori", id);
+  revalidatePath("/admin/kategori"); revalidatePath("/");
+  return { sukses: "Kategori dihapus." };
+}
+
+export async function ubahStatusProduk(idRaw, aktif) {
+  const supabase = await sesiAdmin();
+  if (!supabase) return { error: "Sesi admin habis. Silakan login kembali." };
+  const id = Number(idRaw);
+  if (!Number.isSafeInteger(id) || id < 1 || typeof aktif !== "boolean") return { error: "Data status produk tidak valid." };
+  const { error } = await supabase.from("produk").update({ aktif, diperbarui_at: new Date().toISOString() }).eq("id", id);
+  if (error) return { error: "Status produk gagal diubah." };
+  await catatAksiAdmin(supabase, aktif ? "aktifkan" : "nonaktifkan", "produk", id);
+  revalidatePath("/admin"); revalidatePath("/"); revalidatePath(`/produk/${id}`);
+  return { sukses: true };
+}
+
+export async function simpanPengaturanToko(_prevState, formData) {
+  const supabase = await sesiAdmin();
+  if (!supabase) return { error: "Sesi admin habis. Silakan login kembali." };
+  const nama = formData.get("nama")?.toString().trim() || "";
+  const tagline = formData.get("tagline")?.toString().trim() || "";
+  const nomor = formData.get("nomor_whatsapp")?.toString().trim() || "";
+  const alamat = formData.get("alamat")?.toString().trim() || "";
+  const jam = formData.get("jam_buka")?.toString().trim() || "";
+  const bannerJudul = formData.get("banner_judul")?.toString().trim() || "";
+  const bannerDeskripsi = formData.get("banner_deskripsi")?.toString().trim() || "";
+  const bannerFotoRaw = formData.get("banner_foto")?.toString().trim() || "";
+  const bannerAktif = formData.get("banner_aktif") === "true";
+  if (!nama || nama.length > 100 || !tagline || tagline.length > 240 || !/^62\d{8,13}$/.test(nomor) || alamat.length > 300 || jam.length > 120 || bannerJudul.length > 120 || bannerDeskripsi.length > 500) {
+    return { error: "Periksa nama, tagline, nomor WhatsApp (format 62...), dan batas panjang isian." };
+  }
+  const bannerFoto = bannerFotoRaw ? sanitizeFotoUrl(bannerFotoRaw) : null;
+  if (bannerFotoRaw && bannerFoto === "/produk/placeholder.svg") return { error: "URL foto banner harus berupa HTTPS atau path lokal yang aman." };
+  if (bannerAktif && !bannerJudul) return { error: "Judul wajib diisi untuk mengaktifkan banner." };
+  const { error } = await supabase.from("pengaturan_toko").upsert({ id: true, nama, tagline, nomor_whatsapp: nomor, alamat, jam_buka: jam, banner_judul: bannerJudul || null, banner_deskripsi: bannerDeskripsi || null, banner_foto: bannerFoto, banner_aktif: bannerAktif, diperbarui_at: new Date().toISOString() }, { onConflict: "id" });
+  if (error) return { error: "Pengaturan toko gagal disimpan." };
+  await catatAksiAdmin(supabase, "ubah", "pengaturan_toko");
+  revalidatePath("/"); revalidatePath("/kontak"); revalidatePath("/tentang");
+  return { sukses: "Pengaturan toko berhasil disimpan." };
+}
+
 // US-05: ganti password admin yang sedang login.
 export async function gantiPassword(_prevState, formData) {
   const passwordBaru = formData.get("password_baru")?.toString();
@@ -155,6 +312,8 @@ export async function gantiPassword(_prevState, formData) {
     return { error: "Gagal mengganti password. Pastikan password memenuhi ketentuan, lalu coba lagi." };
   }
 
+  await catatAksiAdmin(supabase, "ubah_password", "admin");
+
   return { sukses: "Password berhasil diganti." };
 }
 
@@ -180,6 +339,7 @@ export async function tambahProduk(_prevState, formData) {
   if (error) {
     return { error: "Gagal menyimpan produk. Periksa data dan coba lagi." };
   }
+  await catatAksiAdmin(supabase, "tambah", "produk");
 
   revalidatePath("/admin");
   revalidatePath("/");
@@ -219,6 +379,7 @@ export async function ubahProduk(_prevState, formData) {
   if (error) {
     return { error: "Gagal memperbarui produk. Periksa data dan coba lagi." };
   }
+  await catatAksiAdmin(supabase, "ubah", "produk", id);
 
   revalidatePath("/admin");
   revalidatePath("/");
@@ -246,6 +407,7 @@ export async function hapusProduk(idRaw) {
   if (error) {
     return { error: "Gagal menghapus produk. Silakan coba lagi." };
   }
+  await catatAksiAdmin(supabase, "hapus", "produk", id);
 
   revalidatePath("/admin");
   revalidatePath("/");

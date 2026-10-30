@@ -44,6 +44,15 @@ html.dark {
   --color-bahaya: #ff938c;
 }
 
+html.dark .bg-red-50 { background-color: #3b1d20; }
+html.dark .text-red-700, html.dark .text-red-600 { color: #ffaaa4; }
+html.dark .border-red-200, html.dark .border-red-300 { border-color: #87444b; }
+html.dark .bg-green-50, html.dark .bg-emerald-50 { background-color: #17372b; }
+html.dark .text-green-700, html.dark .text-emerald-700 { color: #91e1b2; }
+html.dark .border-emerald-200 { border-color: #32684c; }
+html.dark .bg-blue-700 { background-color: #2259a5; }
+html.dark .bg-amber-600 { background-color: #81500a; }
+
 .hero-katalog {
   background:
     radial-gradient(ellipse at 90% 12%, color-mix(in srgb, var(--color-utama) 9%, transparent), transparent 36%),

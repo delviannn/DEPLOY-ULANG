@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { formatRupiah } from "@/lib/format";
 
-export default function KartuProduk({ produk }) {
+export default function KartuProduk({ produk, terlaris = false }) {
+  const baru = produk.created_at && Date.now() - new Date(produk.created_at).getTime() < 14 * 24 * 60 * 60 * 1000;
   return (
     <Link
       href={`/produk/${produk.id}`}
@@ -21,6 +22,8 @@ export default function KartuProduk({ produk }) {
         {produk.harga_coret > produk.harga && (
           <span className="absolute right-2.5 top-2.5 rounded-full bg-red-700 px-2.5 py-1 text-[10px] font-bold text-white">Promo</span>
         )}
+        {baru && <span className="absolute bottom-2.5 right-2.5 rounded-full bg-blue-700 px-2.5 py-1 text-[10px] font-bold text-white">Baru</span>}
+        {!baru && terlaris && <span className="absolute bottom-2.5 right-2.5 rounded-full bg-amber-600 px-2.5 py-1 text-[10px] font-bold text-white">Terlaris</span>}
         {produk.stok === 0 && (
           <span className="absolute bottom-2.5 left-2.5 rounded-full bg-teks/90 px-2.5 py-1 text-[10px] font-bold text-white">Stok habis</span>
         )}

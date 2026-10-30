@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import NavAdmin from "@/components/NavAdmin";
 import FormProduk from "@/components/FormProduk";
-import { buatSupabaseServer } from "@/lib/supabase";
+import { buatSupabaseServer, buatSupabaseSesi } from "@/lib/supabase";
 import { ubahProduk } from "@/app/admin/actions";
 
 // US-09: ubah data produk (terkunci login)
@@ -18,6 +18,8 @@ export default async function HalamanUbahProduk({ params }) {
   if (error || !produk) {
     notFound();
   }
+  const sesi = await buatSupabaseSesi();
+  const { data: kategori } = await sesi.from("kategori").select("nama").order("nama");
 
   return (
     <div className="flex flex-col gap-6 py-8">
@@ -31,6 +33,7 @@ export default async function HalamanUbahProduk({ params }) {
       <FormProduk
         action={ubahProduk}
         produk={produk}
+        daftarKategori={(kategori || []).map((item) => item.nama)}
         labelTombol="Simpan perubahan"
       />
     </div>

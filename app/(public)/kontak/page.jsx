@@ -1,8 +1,12 @@
-import { toko } from "@/lib/toko";
+import { ambilPengaturanToko } from "@/lib/toko-public";
 
-export const metadata = { title: `Kontak | ${toko.nama}`, description: `Hubungi ${toko.nama} melalui WhatsApp atau kunjungi toko kami.` };
+export async function generateMetadata() {
+  const toko = await ambilPengaturanToko();
+  return { title: `Kontak | ${toko.nama}`, description: `Hubungi ${toko.nama} melalui WhatsApp atau kunjungi toko kami.` };
+}
 
-export default function HalamanKontak() {
+export default async function HalamanKontak() {
+  const toko = await ambilPengaturanToko();
   const wa = `https://wa.me/${toko.nomorWhatsApp}?text=${encodeURIComponent(`Halo ${toko.nama}, saya ingin bertanya tentang produk.`)}`;
   return <section className="max-w-prose py-12">
     <p className="text-sm font-semibold text-utama">Kami siap membantu</p>

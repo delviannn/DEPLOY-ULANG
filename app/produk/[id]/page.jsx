@@ -5,6 +5,8 @@ import { buatSupabaseServer } from "@/lib/supabase";
 import { formatRupiah } from "@/lib/format";
 import GaleriProduk from "@/components/GaleriProduk";
 import InteraksiProduk from "@/components/InteraksiProduk";
+import UlasanProduk from "@/components/UlasanProduk";
+import { ambilPengaturanToko } from "@/lib/toko-public";
 
 export async function generateMetadata({ params }) {
   const { id } = await params;
@@ -33,6 +35,8 @@ export default async function HalamanDetailProduk({ params }) {
   if (error || !produk) {
     notFound();
   }
+  const { data: ulasan } = await supabase.from("ulasan").select("id,nama,rating,isi,created_at").eq("produk_id", produk.id).eq("status", "disetujui").order("created_at", { ascending: false }).limit(50);
+  const toko = await ambilPengaturanToko();
 
   return (
     <article className="grid gap-8 py-8 md:grid-cols-2 md:py-12">
@@ -68,20 +72,21 @@ export default async function HalamanDetailProduk({ params }) {
 
         {/* US-12: Pilihan Varian dan Jumlah Pesanan */}
         <div className="border-t border-garis pt-4">
-          {produk.stok > 0 && <PilihanPesanan produk={produk} />}
+          {produk.stok > 0 && <PilihanPesanan produk={produk} nomorWhatsApp={toko.nomorWhatsApp} />}
         </div>
       </div>
       <section className="md:col-span-2 border-t border-garis pt-6">
         <h2 className="text-xl font-bold">Produk lainnya</h2>
         <ProdukTerkait id={produk.id} kategori={produk.kategori} />
       </section>
+      <div className="md:col-span-2"><UlasanProduk produkId={produk.id} ulasan={ulasan || []} /></div>
     </article>
   );
 }
 
 async function ProdukTerkait({ id, kategori }) {
   const supabase = buatSupabaseServer();
-  let query = supabase.from("produk").select("id,nama,harga,harga_coret,foto_url,kategori,stok").eq("aktif", true).neq("id", id).limit(3);
+  let query = supabase.from("produk").select("id,nama,harga,harga_coret,foto_url,kategori,stok,created_at").eq("aktif", true).neq("id", id).limit(3);
   if (kategori) query = query.eq("kategori", kategori);
   const { data } = await query.order("urutan").order("created_at", { ascending: false });
   return data?.length ? <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3">{data.map((item) => <Link key={item.id} href={`/produk/${item.id}`} className="rounded-xl border border-garis p-3 hover:border-utama"><img src={item.foto_url || "/produk/placeholder.svg"} alt="" className="aspect-square w-full rounded-lg object-cover" /><p className="mt-2 font-semibold">{item.nama}</p><p className="text-sm text-teks-lembut">{formatRupiah(item.harga)}</p></Link>)}</div> : <p className="mt-3 text-sm text-teks-lembut">Belum ada produk terkait.</p>;

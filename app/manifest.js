@@ -1,7 +1,8 @@
-import { toko } from "@/lib/toko";
+import { ambilPengaturanToko } from "@/lib/toko-public";
 
 // US-13: Web App Manifest untuk PWA
-export default function manifest() {
+export default async function manifest() {
+  const toko = await ambilPengaturanToko();
   return {
     name: toko.nama,
     short_name: toko.nama,
@@ -9,7 +10,7 @@ export default function manifest() {
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",
-    theme_color: "#16a34a",
+    theme_color: "#0f766e",
     orientation: "portrait",
     icons: [
       {

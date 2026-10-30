@@ -34,8 +34,10 @@ create table if not exists public.pengaturan_toko (
   tagline text not null default '', nomor_whatsapp text not null,
   alamat text not null default '', jam_buka text not null default '',
   banner_judul text, banner_deskripsi text, banner_foto text,
+  banner_aktif boolean not null default false,
   diperbarui_at timestamptz not null default now()
 );
+alter table public.pengaturan_toko add column if not exists banner_aktif boolean not null default false;
 create table if not exists public.ulasan (
   id bigint generated always as identity primary key,
   produk_id bigint not null references public.produk(id) on delete cascade,
@@ -51,6 +53,14 @@ create table if not exists public.klik_whatsapp (
   jumlah integer not null default 1 check (jumlah between 1 and 1000),
   created_at timestamptz not null default now()
 );
+create or replace view public.ringkasan_klik_produk with (security_invoker = true) as
+select produk_id, count(*)::bigint as jumlah_klik
+from public.klik_whatsapp
+where produk_id is not null
+group by produk_id;
+revoke all on public.ringkasan_klik_produk from public, anon, authenticated;
+revoke all on public.ringkasan_klik_produk from public, anon, authenticated;
+grant select on public.ringkasan_klik_produk to service_role;
 create table if not exists public.log_admin (
   id bigint generated always as identity primary key,
   admin_id uuid not null, aksi text not null, entitas text not null,
@@ -124,6 +134,23 @@ drop policy if exists kategori_baca_admin on public.kategori;
 create policy kategori_baca_admin on public.kategori for select to authenticated using (public.is_admin());
 drop policy if exists kategori_kelola_admin on public.kategori;
 create policy kategori_kelola_admin on public.kategori for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create or replace function public.rename_category(p_id bigint, p_nama text, p_slug text)
+returns boolean
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare old_name text;
+begin
+  select nama into old_name from public.kategori where id = p_id for update;
+  if not found then return false; end if;
+  update public.kategori set nama = p_nama, slug = p_slug where id = p_id;
+  update public.produk set kategori = p_nama where kategori = old_name;
+  return true;
+end;
+$$;
+revoke all on function public.rename_category(bigint, text, text) from public, anon;
+grant execute on function public.rename_category(bigint, text, text) to authenticated;
 drop policy if exists toko_baca_admin on public.pengaturan_toko;
 create policy toko_baca_admin on public.pengaturan_toko for select to authenticated using (public.is_admin());
 drop policy if exists toko_ubah_admin on public.pengaturan_toko;
@@ -136,6 +163,8 @@ drop policy if exists klik_baca_admin on public.klik_whatsapp;
 create policy klik_baca_admin on public.klik_whatsapp for select to authenticated using (public.is_admin());
 drop policy if exists log_baca_admin on public.log_admin;
 create policy log_baca_admin on public.log_admin for select to authenticated using (public.is_admin());
+drop policy if exists log_tambah_admin on public.log_admin;
+create policy log_tambah_admin on public.log_admin for insert to authenticated with check (public.is_admin() and admin_id = auth.uid());
 
 drop policy if exists admin_baca_produk on public.produk;
 create policy admin_baca_produk on public.produk for select to authenticated using (public.is_admin());

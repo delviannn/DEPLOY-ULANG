@@ -3,9 +3,11 @@ import FilterKatalog from "@/components/FilterKatalog";
 import Link from "next/link";
 import { toko } from "@/lib/toko";
 import { buatSupabaseServer } from "@/lib/supabase";
+import { ambilPengaturanToko } from "@/lib/toko-public";
 
 // US-01 & US-11: katalog produk dengan pencarian dan filter kategori
 export default async function HalamanKatalog({ searchParams }) {
+  const toko = await ambilPengaturanToko();
   const resolvedParams = (await searchParams) || {};
   const q = (
     resolvedParams.q ||
@@ -30,7 +32,7 @@ export default async function HalamanKatalog({ searchParams }) {
   // Query produk dengan filter pencarian dan kategori
   let query = supabase
     .from("produk")
-    .select("id, nama, harga, harga_coret, foto_url, foto_lainnya, kategori, stok, aktif, varian", { count: "exact" })
+    .select("id, nama, harga, harga_coret, foto_url, foto_lainnya, kategori, stok, aktif, varian, created_at", { count: "exact" })
     .eq("aktif", true);
 
   if (sort === "harga-naik") query = query.order("harga", { ascending: true });
@@ -57,6 +59,8 @@ export default async function HalamanKatalog({ searchParams }) {
   const daftarKategori = Array.from(
     new Set(semuaProduk?.map((p) => p.kategori).filter(Boolean))
   );
+  const { data: clicks } = await supabase.from("ringkasan_klik_produk").select("produk_id,jumlah_klik").order("jumlah_klik", { ascending: false }).limit(5);
+  const produkTerlaris = new Set((clicks || []).map((item) => item.produk_id));
 
   return (
     <>
@@ -79,6 +83,12 @@ export default async function HalamanKatalog({ searchParams }) {
           <span className="rounded-lg border border-garis bg-latar/75 px-3 py-2 font-medium">Lokasi · {toko.alamat}</span>
         </div>
       </section>
+
+      {toko.bannerAktif && <section aria-label="Promo toko" className="relative mt-5 overflow-hidden rounded-2xl border border-garis bg-utama text-white">
+        {toko.bannerFoto && <img src={toko.bannerFoto} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+        <div className="absolute inset-0 bg-slate-950/55" />
+        <div className="relative p-6 sm:p-8"><h2 className="text-2xl font-extrabold">{toko.bannerJudul}</h2>{toko.bannerDeskripsi && <p className="mt-2 max-w-2xl text-sm leading-6">{toko.bannerDeskripsi}</p>}<a href="#produk" className="mt-4 inline-flex rounded-lg bg-white px-4 py-2 text-sm font-bold text-utama">Lihat produk</a></div>
+      </section>}
 
       <section id="produk" aria-labelledby="judul-produk" className="flex scroll-mt-24 flex-col gap-6 py-10 sm:py-14">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -127,7 +137,7 @@ export default async function HalamanKatalog({ searchParams }) {
         ) : (
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
             {daftarProduk.map((produk) => (
-              <KartuProduk key={produk.id} produk={produk} />
+              <KartuProduk key={produk.id} produk={produk} terlaris={produkTerlaris.has(produk.id)} />
             ))}
           </div>
         )}

@@ -6,7 +6,7 @@ import { formatRupiah } from "@/lib/format";
 import { simpanKeKeranjang } from "@/components/KeranjangBelanja";
 
 // US-12: Komponen pemilihan varian dan jumlah pesanan dengan integrasi WhatsApp
-export default function PilihanPesanan({ produk }) {
+export default function PilihanPesanan({ produk, nomorWhatsApp = toko.nomorWhatsApp }) {
   const varianOptions = Array.isArray(produk.varian)
     ? produk.varian.filter((item) => item && typeof item.nama === "string" && item.nama.trim())
     : [];
@@ -35,7 +35,7 @@ export default function PilihanPesanan({ produk }) {
 
   // Format pesan WhatsApp yang rapi dan memuat rincian pesanan
   const pesan = `Halo, saya ingin memesan:\n\n*${produk.nama}*${varianDipilih ? `\n- Varian: ${varianDipilih}` : ""}\n- Jumlah: ${jumlah} item\n- Total Harga: ${formatRupiah(totalHarga)}\n\nApakah stok masih tersedia?`;
-  const urlWhatsApp = `https://wa.me/${toko.nomorWhatsApp}?text=${encodeURIComponent(pesan)}`;
+  const urlWhatsApp = `https://wa.me/${nomorWhatsApp}?text=${encodeURIComponent(pesan)}`;
 
   return (
     <div className="flex flex-col gap-5 pt-2">

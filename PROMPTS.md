@@ -240,5 +240,23 @@ Catat prompt penting selama membangun aplikasi: apa yang kamu minta, hasilnya, d
 - Memperbarui `components/Footer.jsx` dengan copyright dinamis dan admin login indicator berikon gembok.
 - Seluruh struktur layout utama (`max-w-5xl`, grid katalog 2/3 kolom) tetap dipertahankan 100% utuh sesuai panduan `DESIGN.md`.
 
+## [SENDIRI] Menindaklanjuti evaluasi fitur katalog US-15 sampai US-50
+
+**Prompt:**
+> Perbaiki semua temuan yang masih salah pada evaluasi fitur.
+
+**Hasil:**
+- Menambahkan kontrol jumlah dan hapus item pada keranjang, serta halaman Favorit, Terakhir Dilihat, dan Bandingkan.
+- Menambahkan badge Baru/Terlaris, ringkasan per kategori, manajemen kategori, toggle status produk, validasi harga dan pesan per kolom.
+- Menambahkan impor/ekspor CSV, ulasan dan moderasi, pengaturan toko dan banner, pengelolaan akun admin, serta halaman log aktivitas.
+- Menambahkan asisten tanya produk berbasis OpenAI/Gemini, pengaturan urutan produk, warna mode gelap, dan URL kategori ke sitemap.
+- Memperluas `docs/migration-fitur-katalog.sql` dengan ringkasan klik, kolom banner aktif, RPC rename kategori, dan izin tulis log admin.
+- Memperbarui README sesuai kemampuan aplikasi saat ini.
+- Memindahkan loading boundary publik ke route group agar halaman produk yang memanggil `notFound()` dapat mengirim status 404.
+
+**Catatan penerapan:**
+- Jalankan ulang `docs/migration-fitur-katalog.sql` pada Supabase sebelum memakai fitur kategori, banner, ulasan, log, dan badge Terlaris.
+- Fitur AI memerlukan `OPENAI_API_KEY` atau `GEMINI_API_KEY`; undangan admin memerlukan SMTP/penyedia email Supabase yang sudah dikonfigurasi.
+
 
 

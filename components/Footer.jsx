@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { toko } from "@/lib/toko";
 
-export default function Footer() {
+export default function Footer({ toko }) {
   return (
     <footer className="mt-16 border-t border-garis bg-permukaan">
       <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-10 text-sm text-teks-lembut sm:flex-row sm:items-start sm:justify-between">
@@ -27,6 +27,9 @@ export default function Footer() {
           <nav aria-label="Tautan toko" className="flex gap-4 text-xs">
             <Link href="/tentang" className="hover:text-utama">Tentang</Link>
             <Link href="/kontak" className="hover:text-utama">Kontak</Link>
+            <Link href="/favorit" className="hover:text-utama">Favorit</Link>
+            <Link href="/terakhir-dilihat" className="hover:text-utama">Dilihat</Link>
+            <Link href="/bandingkan" className="hover:text-utama">Bandingkan</Link>
           </nav>
           <span className="text-xs text-teks-lembut">
             © {new Date().getFullYear()} {toko.nama}. Seluruh hak cipta dilindungi.

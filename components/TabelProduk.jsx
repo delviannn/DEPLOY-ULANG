@@ -1,6 +1,7 @@
 import { formatRupiah } from "@/lib/format";
 import Tombol from "@/components/Tombol";
 import TombolHapusProduk from "@/components/TombolHapusProduk";
+import TombolStatusProduk from "@/components/TombolStatusProduk";
 
 /**
  * @typedef {Object} Produk
@@ -91,6 +92,7 @@ export default function TabelProduk({ daftarProduk }) {
               </td>
               <td className="px-4 py-3">
                 <div className="flex justify-end gap-2">
+                  <TombolStatusProduk id={produk.id} aktif={produk.aktif !== false} />
                   <Tombol href={`/admin/produk/${produk.id}/ubah`} varian="garis">
                     Ubah
                   </Tombol>

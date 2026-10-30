@@ -1,4 +1,4 @@
-const siteUrl = process.env.SITE_URL || "https://katalog-delvian.vercel.app";
+const siteUrl = process.env.SITE_URL || "https://deploy-ulang.vercel.app";
 
 export default function robots() {
   return {

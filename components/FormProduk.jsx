@@ -6,7 +6,7 @@ import Tombol from "@/components/Tombol";
 import { buatDeskripsiAI } from "@/app/admin/actions";
 
 // Dipakai untuk tambah produk (US-08) dan ubah produk (US-09), dilengkapi AI generator (US-14)
-export default function FormProduk({ action, produk = {}, labelTombol = "Simpan produk" }) {
+export default function FormProduk({ action, produk = {}, labelTombol = "Simpan produk", daftarKategori = [] }) {
   const [state, formAction, pending] = useActionState(action, null);
 
   // State untuk form fields yang terhubung dengan AI generator
@@ -49,6 +49,7 @@ export default function FormProduk({ action, produk = {}, labelTombol = "Simpan 
       <Input
         label="Nama produk"
         name="nama"
+        error={state?.fieldErrors?.nama}
         value={nama}
         onChange={(e) => setNama(e.target.value)}
         placeholder="Contoh: Kopi Bubuk Robusta 250 g"
@@ -59,23 +60,25 @@ export default function FormProduk({ action, produk = {}, labelTombol = "Simpan 
         label="Harga (Rp)"
         name="harga"
         type="number"
-        min="0"
+        min="1"
+        error={state?.fieldErrors?.harga}
         defaultValue={produk.harga || ""}
         placeholder="Contoh: 45000"
         required
       />
 
-      <Input
-        label="Kategori"
-        name="kategori"
-        value={kategori}
-        onChange={(e) => setKategori(e.target.value)}
-        placeholder="Contoh: Minuman, Camilan, Bumbu"
-      />
+      <label className="flex flex-col gap-1.5 text-sm font-semibold text-teks">Kategori
+        <select name="kategori" value={kategori} onChange={(e) => setKategori(e.target.value)} className="w-full rounded-lg border border-garis bg-latar px-3 py-2.5 text-base text-teks">
+          <option value="">Tanpa kategori</option>
+          {[...new Set([...daftarKategori, ...(kategori && !daftarKategori.includes(kategori) ? [kategori] : [])])].map((nama) => <option key={nama} value={nama}>{nama}</option>)}
+        </select>
+        <a href="/admin/kategori" className="text-xs font-medium text-utama underline">Kelola daftar kategori</a>
+      </label>
 
       <Input
         label="Link foto (URL atau path)"
         name="foto_url"
+        error={state?.fieldErrors?.foto_url}
         placeholder="https://... atau /produk/nama-file.svg"
         defaultValue={produk.foto_url || ""}
       />
@@ -86,13 +89,16 @@ export default function FormProduk({ action, produk = {}, labelTombol = "Simpan 
         name="stok"
         type="number"
         min="0"
+        error={state?.fieldErrors?.stok}
         defaultValue={produk.stok ?? 0}
         placeholder="Contoh: 10"
       />
 
-      <Input label="Harga sebelum promo (opsional)" name="harga_coret" type="number" min="0" defaultValue={produk.harga_coret ?? ""} placeholder="Kosongkan bila tidak promo" />
-      <Input label="Foto tambahan (URL, satu per baris)" name="foto_lainnya" textarea defaultValue={(produk.foto_lainnya || []).join("\n")} placeholder="https://..." />
-      <Input label="Varian (JSON)" name="varian" textarea defaultValue={JSON.stringify(produk.varian || [], null, 2)} placeholder={'[{"nama":"250 g","harga":45000}]'} />
+      <Input label="Urutan tampil" name="urutan" type="number" min="0" error={state?.fieldErrors?.urutan} defaultValue={produk.urutan ?? 0} />
+
+      <Input label="Harga sebelum promo (opsional)" name="harga_coret" type="number" min="0" error={state?.fieldErrors?.harga_coret} defaultValue={produk.harga_coret ?? ""} placeholder="Kosongkan bila tidak promo" />
+      <Input label="Foto tambahan (URL, satu per baris)" name="foto_lainnya" error={state?.fieldErrors?.foto_lainnya} textarea defaultValue={(produk.foto_lainnya || []).join("\n")} placeholder="https://..." />
+      <Input label="Varian (JSON)" name="varian" error={state?.fieldErrors?.varian} textarea defaultValue={JSON.stringify(produk.varian || [], null, 2)} placeholder={'[{"nama":"250 g","harga":45000}]'} />
 
       <label className="flex flex-col gap-1.5 text-sm font-semibold">
         Status Produk

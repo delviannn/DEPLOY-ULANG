@@ -13,7 +13,7 @@ export default async function HalamanKategori({ params }) {
   const supabase = buatSupabaseServer();
   const { data: kategori, error } = await supabase.from("kategori").select("nama, slug").eq("slug", slug).maybeSingle();
   if (error || !kategori) notFound();
-  const { data: produk, error: productError } = await supabase.from("produk").select("id,nama,harga,foto_url,kategori,harga_coret,stok,aktif").eq("kategori", kategori.nama).eq("aktif", true).order("urutan").order("created_at", { ascending: false });
+  const { data: produk, error: productError } = await supabase.from("produk").select("id,nama,harga,foto_url,kategori,harga_coret,stok,aktif,created_at").eq("kategori", kategori.nama).eq("aktif", true).order("urutan").order("created_at", { ascending: false });
 
   return <section className="py-10">
     <a href="/" className="text-sm text-utama hover:underline">← Semua produk</a>
